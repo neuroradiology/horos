@@ -5,9 +5,13 @@
  it under the terms of the GNU Lesser General Public License as published by
  the Free Software Foundation, Êversion 3 of the License.
  
- Portions of the Horos Project were originally licensed under the GNU GPL license.
- However, all authors of that software have agreed to modify the license to the
- GNU LGPL.
+ The Horos Project was based originally upon the OsiriX Project which at the time of
+ the code fork was licensed as a LGPL project.  However, not all of the the source-code
+ was properly documented and file headers were not all updated with the appropriate
+ license terms. The Horos Project, originally was licensed under the  GNU GPL license.
+ However, contributors to the software since that time have agreed to modify the license
+ to the GNU LGPL in order to be conform to the changes previously made to the
+ OsiriX Project.
  
  Horos is distributed in the hope that it will be useful, but
  WITHOUT ANY WARRANTY EXPRESS OR IMPLIED, INCLUDING ANY WARRANTY OF
@@ -63,13 +67,13 @@
  *
  */
 
-#include <Cocoa/Cocoa.h>
-#include"OsiriX/DCMNetServiceDelegate.h"
+#import <Cocoa/Cocoa.h>
+#import "DCMNetServiceDelegate.h"
 #import "SendController.h"
-#import "browserController.h"
-#import "OsiriX/DCMObject.h"
-#import "OsiriX/DCM.h"
-#import "OsiriX/DCMTransferSyntax.h"
+#import "BrowserController.h"
+#import "DCMObject.h"
+#import "DCM.h"
+#import "DCMTransferSyntax.h"
 
 #include "osconfig.h"    /* make sure OS specific configuration is included first */
 #include "dcmqrcbm.h"
@@ -132,9 +136,9 @@ OFCondition decompressFileFormat(DcmFileFormat fileformat, const char *fname)
 	{
 		@try
 		{
-			NSString *path = [NSString stringWithCString:fname encoding:NSUTF8StringEncoding];
+			NSString *path = [NSString stringWithUTF8String:fname];
 			DCMObject *dcmObject = [[DCMObject alloc] initWithContentsOfFile:path decodingPixelData: NO];
-			[[NSFileManager defaultManager] removeFileAtPath:path handler:0L];
+			[[NSFileManager defaultManager] removeItemAtPath:path error:NULL];
 			[dcmObject writeToFile:path withTransferSyntax:[DCMTransferSyntax ExplicitVRLittleEndianTransferSyntax] quality:DCMLosslessQuality AET:@"Horos" atomically:YES];
 			[dcmObject release];
 		}
@@ -186,8 +190,8 @@ OFBool compressFileFormat(DcmFileFormat fileformat, const char *fname, char *out
 	{
 		@try
 		{
-			NSString *path = [NSString stringWithCString:fname encoding:NSUTF8StringEncoding];
-			NSString *outpath = [NSString stringWithCString:outfname encoding:NSUTF8StringEncoding];
+			NSString *path = [NSString stringWithUTF8String:fname];
+			NSString *outpath = [NSString stringWithUTF8String:outfname];
 			
 			DCMObject *dcmObject = [[DCMObject alloc] initWithContentsOfFile:path decodingPixelData: NO];
 			
@@ -208,8 +212,8 @@ OFBool compressFileFormat(DcmFileFormat fileformat, const char *fname, char *out
 	{
 		@try
 		{
-			NSString *path = [NSString stringWithCString:fname encoding:NSUTF8StringEncoding];
-			NSString *outpath = [NSString stringWithCString:outfname encoding:NSUTF8StringEncoding];
+			NSString *path = [NSString stringWithUTF8String:fname];
+			NSString *outpath = [NSString stringWithUTF8String:outfname];
 			
 			DCMObject *dcmObject = [[DCMObject alloc] initWithContentsOfFile:path decodingPixelData: NO];
 			
@@ -443,7 +447,7 @@ void DcmQueryRetrieveMoveContext::callbackHandler(
 	    requestIdentifiers->print(COUT);
         }
 		
-		if( request->MoveDestination)
+		if (request->MoveDestination[0])
 			strcpy( currentDestinationMoveAET, request->MoveDestination);
 		else
 			strcpy( currentDestinationMoveAET, "");
@@ -830,7 +834,7 @@ void DcmQueryRetrieveMoveContext::moveNextImage(DcmQueryRetrieveDatabaseStatus *
 		DcmXfer preferredXfer( xferSyntax);
 		OFBool status = YES;
 		
-		sprintf( outfname, "%s/QR-CMOVE-%d-%d.dcm", [[BrowserController currentBrowser] cfixedTempNoIndexDirectory], seed++, getpid());
+		sprintf( outfname, "%s/QR-CMOVE-%d-%d.dcm", [[DicomDatabase activeLocalDatabase] tempDirPathC], seed++, getpid());
 		unlink( outfname);
 		
 		if (filexfer.isNotEncapsulated() && preferredXfer.isNotEncapsulated())

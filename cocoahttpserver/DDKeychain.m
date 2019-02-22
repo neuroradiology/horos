@@ -5,9 +5,13 @@
  it under the terms of the GNU Lesser General Public License as published by
  the Free Software Foundation,  version 3 of the License.
  
- Portions of the Horos Project were originally licensed under the GNU GPL license.
- However, all authors of that software have agreed to modify the license to the
- GNU LGPL.
+ The Horos Project was based originally upon the OsiriX Project which at the time of
+ the code fork was licensed as a LGPL project.  However, not all of the the source-code
+ was properly documented and file headers were not all updated with the appropriate
+ license terms. The Horos Project, originally was licensed under the  GNU GPL license.
+ However, contributors to the software since that time have agreed to modify the license
+ to the GNU LGPL in order to be conform to the changes previously made to the
+ OsiriX Project.
  
  Horos is distributed in the hope that it will be useful, but
  WITHOUT ANY WARRANTY EXPRESS OR IMPLIED, INCLUDING ANY WARRANTY OF
@@ -38,6 +42,9 @@
 static NSMutableDictionary *lockedFiles = nil;
 static NSRecursiveLock *lockFile = nil;
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+
 /*
  * Function: SSLSecPolicyCopy
  * Purpose:
@@ -52,19 +59,15 @@ static OSStatus SSLSecPolicyCopy(SecPolicyRef *ret_policy)
 	*ret_policy = NULL;
 	status = SecPolicySearchCreate(CSSM_CERT_X_509v3, &CSSMOID_APPLE_TP_SSL, NULL, &policy_search);
 	//status = SecPolicySearchCreate(CSSM_CERT_X_509v3, &CSSMOID_APPLE_X509_BASIC, NULL, &policy_search);
-	require_noerr(status, SecPolicySearchCreate);
+    if (status == errSecSuccess) {
+        status = SecPolicySearchCopyNext(policy_search, &policy);
+        
+        if (status == errSecSuccess)
+            *ret_policy = policy;
 	
-	status = SecPolicySearchCopyNext(policy_search, &policy);
-	require_noerr(status, SecPolicySearchCopyNext);
-	
-	*ret_policy = policy;
-	
-SecPolicySearchCopyNext:
-	
-	CFRelease(policy_search);
-	
-SecPolicySearchCreate:
-	
+        CFRelease(policy_search);
+    }
+    
 	return (status);
 }
 
@@ -426,10 +429,10 @@ SecPolicySearchCreate:
 	[DDKeychain KeychainAccessSetPreferredIdentity:identity forName:@"org.horosproject.horoswebserver" keyUse:CSSM_KEYUSE_ANY];
 	
 	// Don't forget to delete the temporary files
-	[[NSFileManager defaultManager] removeFileAtPath:privateKeyPath handler:nil];
-	[[NSFileManager defaultManager] removeFileAtPath:reqConfPath handler:nil];
-	[[NSFileManager defaultManager] removeFileAtPath:certificatePath handler:nil];
-	[[NSFileManager defaultManager] removeFileAtPath:certWrapperPath handler:nil];
+	[[NSFileManager defaultManager] removeItemAtPath:privateKeyPath error:NULL];
+	[[NSFileManager defaultManager] removeItemAtPath:reqConfPath error:NULL];
+	[[NSFileManager defaultManager] removeItemAtPath:certificatePath error:NULL];
+	[[NSFileManager defaultManager] removeItemAtPath:certWrapperPath error:NULL];
 	
 	// Don't forget to release anything we may have created
 	if(keychain)   CFRelease(keychain);
@@ -571,7 +574,7 @@ SecPolicySearchCreate:
 	NSFileManager *fileManager = [NSFileManager defaultManager];
 	if([fileManager fileExistsAtPath:appTempDir] == NO)
 	{
-		[fileManager createDirectoryAtPath:appTempDir attributes:nil];
+		[fileManager createDirectoryAtPath:appTempDir withIntermediateDirectories:YES attributes:nil error:NULL];
 	}
 	
 	return appTempDir;
@@ -709,10 +712,10 @@ SecPolicySearchCreate:
     
     for(int i = 0; i < CFArrayGetCount(arrayRef); i++) {
         NSDictionary * attr = (__bridge NSDictionary *)(CFArrayGetValueAtIndex(arrayRef, i));
-        NSString * label = (NSString *)[attr objectForKey:kSecAttrLabel];
+        /*NSString * label = (NSString *)[attr objectForKey:(id)kSecAttrLabel];*/
         
         if (YES)  {
-            SecIdentityRef identityRef = (__bridge SecIdentityRef)([attr objectForKey:kSecValueRef]);
+            SecIdentityRef identityRef = (__bridge SecIdentityRef)([attr objectForKey:(id)kSecValueRef]);
             SecCertificateRef certRef;
             err = SecIdentityCopyCertificate(identityRef, &certRef);
             if (err != errSecSuccess) {
@@ -1059,7 +1062,7 @@ SecPolicySearchCreate:
             while( [convertTask isRunning])
                 [NSThread sleepForTimeInterval: 0.1];
             
-			[[NSFileManager defaultManager] removeFileAtPath:[path stringByAppendingPathExtension:@"p12"] handler:nil]; // remove the .p12 file
+			[[NSFileManager defaultManager] removeItemAtPath:[path stringByAppendingPathExtension:@"p12"] error:NULL]; // remove the .p12 file
 		}
 		else NSLog(@"SecKeychainItemExport : error : %@", [DDKeychain stringForError:status]);
 		
@@ -1182,8 +1185,8 @@ SecPolicySearchCreate:
 		if(n==0)
 		{
 			[lockedFiles removeObjectForKey:path];
-			//[[NSFileManager defaultManager] removeFileAtPath:path handler:nil];
-			//NSLog(@"removeFileAtPath: %@", path);
+			//[[NSFileManager defaultManager] removeItemAtPath:path error:NULL];
+			//NSLog(@"removeItemAtPath: %@", path);
 		}
 	}
 }
@@ -1201,5 +1204,7 @@ SecPolicySearchCreate:
 	//NSString *cmd = [NSString stringWithFormat:@"rm %@* %@*", TLS_PRIVATE_KEY_FILE, TLS_CERTIFICATE_FILE];
 	//system([cmd cStringUsingEncoding:NSUTF8StringEncoding]);
 }
+
+#pragma clang diagnostic pop
 
 @end

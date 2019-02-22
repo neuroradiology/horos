@@ -5,9 +5,13 @@
  it under the terms of the GNU Lesser General Public License as published by
  the Free Software Foundation,  version 3 of the License.
  
- Portions of the Horos Project were originally licensed under the GNU GPL license.
- However, all authors of that software have agreed to modify the license to the
- GNU LGPL.
+ The Horos Project was based originally upon the OsiriX Project which at the time of
+ the code fork was licensed as a LGPL project.  However, not all of the the source-code
+ was properly documented and file headers were not all updated with the appropriate
+ license terms. The Horos Project, originally was licensed under the  GNU GPL license.
+ However, contributors to the software since that time have agreed to modify the license
+ to the GNU LGPL in order to be conform to the changes previously made to the
+ OsiriX project.
  
  Horos is distributed in the hope that it will be useful, but
  WITHOUT ANY WARRANTY EXPRESS OR IMPLIED, INCLUDING ANY WARRANTY OF
@@ -71,8 +75,11 @@
 	if( self = [super init])
 	{
 		NSNib *nib = [[[NSNib alloc] initWithNibNamed: @"OSILocationsPreferencePanePref" bundle: nil] autorelease];
-		[nib instantiateNibWithOwner:self topLevelObjects: nil];
+		[nib instantiateWithOwner:self topLevelObjects:&_tlos];
 		
+        [WADOSettings retain];
+        [TLSSettings retain];
+        
 		[self setMainView: [mainWindow contentView]];
 		[self mainViewDidLoad];
 	}
@@ -372,7 +379,12 @@
 	
 	[TLSDHParameterFileURL release];
 	[TLSSupportedCipherSuite release];
-	[TLSAuthenticationCertificate release];
+    [TLSAuthenticationCertificate release];
+    
+    [WADOSettings release];
+    [TLSSettings release];
+    
+    [_tlos release]; _tlos = nil;
 	
 	[super dealloc];
 }
@@ -516,12 +528,15 @@
 {
 	NSSavePanel		*sPanel		= [NSSavePanel savePanel];
 
-	[sPanel setRequiredFileType:@"plist"];
+	[sPanel setAllowedFileTypes:@[@"plist"]];
+    sPanel.nameFieldStringValue = NSLocalizedString(@"OsiriXDB.plist", nil);
 	
-	if ([sPanel runModalForDirectory:0L file:NSLocalizedString(@"OsiriXDB.plist", nil)] == NSFileHandlingPanelOKButton)
-	{
-		[[osiriXServers arrangedObjects] writeToFile:[sPanel filename] atomically: YES];
-	}
+    [sPanel beginWithCompletionHandler:^(NSInteger result) {
+        if (result != NSFileHandlingPanelOKButton)
+            return;
+        
+        [[osiriXServers arrangedObjects] writeToURL:sPanel.URL atomically: YES];
+    }];
 }
 
 - (IBAction) refreshNodesOsiriXDB: (id) sender
@@ -551,11 +566,13 @@
 	
 	[self resetTest];
 	
-	[sPanel setRequiredFileType:@"plist"];
-	
-	if ([sPanel runModalForDirectory:0L file:nil types:[NSArray arrayWithObject:@"plist"]] == NSFileHandlingPanelOKButton)
-	{
-		NSArray	*r = [NSArray arrayWithContentsOfFile: [sPanel filename]];
+	[sPanel setAllowedFileTypes:@[@"plist"]];
+    
+    [sPanel beginWithCompletionHandler:^(NSInteger result) {
+        if (result != NSFileHandlingPanelOKButton)
+            return;
+        
+		NSArray	*r = [NSArray arrayWithContentsOfURL:sPanel.URL];
 		
 		if( r)
 		{
@@ -590,7 +607,7 @@
 				}
 			}
 		}
-	}
+    }];
 }
 
 
@@ -598,14 +615,18 @@
 {
 	NSSavePanel		*sPanel		= [NSSavePanel savePanel];
 
-	[sPanel setRequiredFileType:@"plist"];
+	[sPanel setAllowedFileTypes:@[@"plist"]];
 	
 	[self resetTest];
 	
-	if ([sPanel runModalForDirectory:0L file:NSLocalizedString(@"DICOMNodes.plist", nil)] == NSFileHandlingPanelOKButton)
-	{
-		[[dicomNodes arrangedObjects] writeToFile:[sPanel filename] atomically: YES];
-	}
+    sPanel.nameFieldStringValue = NSLocalizedString(@"DICOMNodes.plist", nil);
+    
+    [sPanel beginWithCompletionHandler:^(NSInteger result) {
+        if (result != NSFileHandlingPanelOKButton)
+            return;
+        
+        [[dicomNodes arrangedObjects] writeToURL:sPanel.URL atomically: YES];
+    }];
 }
 
 - (IBAction) refreshNodesListURL: (id) sender
@@ -640,11 +661,15 @@
 	
 	[self resetTest];
 	
-	[sPanel setRequiredFileType:@"plist"];
+	[sPanel setAllowedFileTypes:@[@"plist"]];
 	
-	if ([sPanel runModalForDirectory:0L file:nil types:[NSArray arrayWithObject:@"plist"]] == NSFileHandlingPanelOKButton)
-	{
-		NSArray	*r = [NSArray arrayWithContentsOfFile: [sPanel filename]];
+    [sPanel beginWithCompletionHandler:^(NSInteger result) {
+        if (result != NSFileHandlingPanelOKButton) {
+            [self resetTest];
+            return;
+        }
+        
+		NSArray	*r = [NSArray arrayWithContentsOfURL:sPanel.URL];
 		
 		if( r)
 		{
@@ -680,9 +705,9 @@
 				}
 			}
 		}
-	}
-	
-	[self resetTest];
+        
+        [self resetTest];
+    }];
 }
 
 - (void) testThread:(NSArray*) serverList
@@ -782,9 +807,13 @@
     [oPanel setCanChooseFiles:YES];
     [oPanel setCanChooseDirectories:YES];
 
-	if ([oPanel runModalForDirectory:0L file:nil types:[NSArray arrayWithObject:@"sql"]] == NSFileHandlingPanelOKButton)
-	{
-		NSString	*location = [oPanel filename];
+    oPanel.allowedFileTypes = @[@"sql"];
+    
+    [oPanel beginWithCompletionHandler:^(NSInteger result) {
+        if (result != NSFileHandlingPanelOKButton)
+            return;
+        
+		NSString	*location = oPanel.URL.path;
 		
 		if( [[location lastPathComponent] isEqualToString:@"Horos Data"])
 		{
@@ -811,9 +840,9 @@
 				[[localPaths tableView] scrollRowToVisible: [[localPaths tableView] selectedRow]];
 			}
 		}
-	}
-	
-	[[[self mainView] window] makeKeyAndOrderFront: self];
+
+        [[[self mainView] window] makeKeyAndOrderFront: self];
+    }];
 }
 
 #pragma mark DICOM TLS Support

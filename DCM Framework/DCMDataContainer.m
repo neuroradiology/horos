@@ -5,9 +5,13 @@
  it under the terms of the GNU Lesser General Public License as published by
  the Free Software Foundation, Êversion 3 of the License.
  
- Portions of the Horos Project were originally licensed under the GNU GPL license.
- However, all authors of that software have agreed to modify the license to the
- GNU LGPL.
+ The Horos Project was based originally upon the OsiriX Project which at the time of
+ the code fork was licensed as a LGPL project.  However, not all of the the source-code
+ was properly documented and file headers were not all updated with the appropriate
+ license terms. The Horos Project, originally was licensed under the  GNU GPL license.
+ However, contributors to the software since that time have agreed to modify the license
+ to the GNU LGPL in order to be conform to the changes previously made to the
+ OsiriX Project.
  
  Horos is distributed in the hope that it will be useful, but
  WITHOUT ANY WARRANTY EXPRESS OR IMPLIED, INCLUDING ANY WARRANTY OF
@@ -175,7 +179,7 @@ void signal_EXC(int sig_num)
 - (id)initWithContentsOfURL:(NSURL *)aURL{
 	NSData *aData = [[[NSMutableData alloc] initWithContentsOfURL:aURL] autorelease];
 	return [self initWithData:aData]; 
-	if (self = [super init]) {
+	/*if (self = [super init]) {
 		dicomData = [[NSMutableData dataWithContentsOfURL:aURL] retain];
 		_ptr = (unsigned char *)[dicomData bytes];
 		if (![self determineTransferSyntax])
@@ -185,7 +189,7 @@ void signal_EXC(int sig_num)
             return nil;
         }
 	}
-	return self;
+	return self;*/
 }
 
 - (id)initWithBytes:(const void *)bytes length:(NSUInteger)length{
@@ -830,7 +834,7 @@ void signal_EXC(int sig_num)
 - (void)addString:(NSString *)string{
 	NSData *data = [string dataUsingEncoding:stringEncoding];
 	[dicomData appendData:data];
-	int length = [data length];
+	int length = (int)[data length];
 	if (length%2)
 		[self addUnsignedChar: ' '];
 	
@@ -839,7 +843,7 @@ void signal_EXC(int sig_num)
 - (void)addStringWithZeroPadding:(NSString *)string{
 	NSData *data = [string dataUsingEncoding:stringEncoding];
 	[dicomData appendData:data];
-	int length = [data length];
+	int length = (int)[data length];
 	if (length%2)
 		[self addUnsignedChar: 0x00];
 }
@@ -881,7 +885,7 @@ void signal_EXC(int sig_num)
 	
 	NSData *data = [string dataUsingEncoding:encodings[ 0]];
 	[dicomData appendData:data];
-	int length = [data length];
+	int length = (int)[data length];
 	if (length%2)
 		[self addUnsignedChar:' '];
 }
@@ -890,7 +894,7 @@ void signal_EXC(int sig_num)
 {
 	NSData *data = [string dataUsingEncoding:encoding];
 	[dicomData appendData:data];
-	int length = [data length];
+	int length = (int)[data length];
 	if (length%2)
 		[self addUnsignedChar:' '];	
 }
@@ -1082,7 +1086,7 @@ void signal_EXC(int sig_num)
 	if (position + elementLength > [dicomData length] || elementLength < 0 || position < 0)
     {
 		NSArray *keys = [NSArray arrayWithObjects:@"position", @"elementLength", @"dataLength", nil];
-		NSArray *objects = [NSArray arrayWithObjects:[NSNumber numberWithInt:position], [NSNumber numberWithInt:elementLength], [NSNumber numberWithInt:[dicomData length]], nil];
+		NSArray *objects = [NSArray arrayWithObjects:[NSNumber numberWithInt:position], [NSNumber numberWithInt:elementLength], [NSNumber numberWithInt:(int)[dicomData length]], nil];
 	
 		NSDictionary *userInfo =  [NSDictionary dictionaryWithObjects:objects forKeys:keys];
 		if (DCMDEBUG)
@@ -1108,7 +1112,7 @@ void signal_EXC(int sig_num)
 }
 
 - (unsigned)length {
-	return [dicomData length];
+	return (unsigned)[dicomData length];
 }
 
 - (void)startReadingMetaHeader

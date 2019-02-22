@@ -5,9 +5,13 @@
  it under the terms of the GNU Lesser General Public License as published by
  the Free Software Foundation,  version 3 of the License.
  
- Portions of the Horos Project were originally licensed under the GNU GPL license.
- However, all authors of that software have agreed to modify the license to the
- GNU LGPL.
+ The Horos Project was based originally upon the OsiriX Project which at the time of
+ the code fork was licensed as a LGPL project.  However, not all of the the source-code
+ was properly documented and file headers were not all updated with the appropriate
+ license terms. The Horos Project, originally was licensed under the  GNU GPL license.
+ However, contributors to the software since that time have agreed to modify the license
+ to the GNU LGPL in order to be conform to the changes previously made to the
+ OsiriX Project.
  
  Horos is distributed in the hope that it will be useful, but
  WITHOUT ANY WARRANTY EXPRESS OR IMPLIED, INCLUDING ANY WARRANTY OF
@@ -66,7 +70,7 @@ char* DCMreplaceInvalidCharacter( char* str ) {
 	[mutable replaceOccurrencesOfString:@"\n" withString:@"" options:0 range:NSMakeRange(0, [mutable length])]; 
 	[mutable replaceOccurrencesOfString:@"\"" withString:@"'" options:0 range:NSMakeRange(0, [mutable length])];
 	
-	int i = [mutable length];
+	int i = (int)[mutable length];
 	while( --i > 0)
 	{
 		if( [mutable characterAtIndex: i]==' ') [mutable deleteCharactersInRange: NSMakeRange( i, 1)];
@@ -89,7 +93,7 @@ char* DCMreplaceInvalidCharacter( char* str ) {
 	else
     {
         NSLog( @"***** warning DCMCharacterSet stringWithBytes, length == 0, use C String length");
-        fromLength = strlen( str);
+        fromLength = (int)strlen(str);
     }
     
 	NSMutableString	*result = [NSMutableString string];
@@ -109,7 +113,7 @@ char* DCMreplaceInvalidCharacter( char* str ) {
         
         if (isEscape || isDelimiter)
         {
-            int convertLength = currentChar - firstChar - 1;
+            int convertLength = (int)(currentChar-firstChar) - 1;
 			
             if( convertLength - (escLength+1) >= 0)
             {
@@ -245,10 +249,10 @@ char* DCMreplaceInvalidCharacter( char* str ) {
 	
     // convert any remaining characters from the input string
     {
-        int convertLength = currentChar - firstChar;
+        int convertLength = (int)(currentChar - firstChar);
         if (convertLength > 0)
         {
-            int convertLength = currentChar - firstChar;
+            int convertLength = (int)(currentChar - firstChar);
             
             if( firstChar + convertLength <= str + fromLength && ( convertLength - (escLength+1) >= 0))
             {

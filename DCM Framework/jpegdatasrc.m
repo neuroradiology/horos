@@ -5,9 +5,13 @@
  it under the terms of the GNU Lesser General Public License as published by
  the Free Software Foundation, Êversion 3 of the License.
  
- Portions of the Horos Project were originally licensed under the GNU GPL license.
- However, all authors of that software have agreed to modify the license to the
- GNU LGPL.
+ The Horos Project was based originally upon the OsiriX Project which at the time of
+ the code fork was licensed as a LGPL project.  However, not all of the the source-code
+ was properly documented and file headers were not all updated with the appropriate
+ license terms. The Horos Project, originally was licensed under the  GNU GPL license.
+ However, contributors to the software since that time have agreed to modify the license
+ to the GNU LGPL in order to be conform to the changes previously made to the
+ OsiriX Project.
  
  Horos is distributed in the hope that it will be useful, but
  WITHOUT ANY WARRANTY EXPRESS OR IMPLIED, INCLUDING ANY WARRANTY OF
@@ -50,7 +54,7 @@ readFromData(NSData *data, JOCTET *buffer, int currentPosition, int length){
 		lengthToRead = length;
 	}
 	else{
-		lengthToRead = [data length] - currentPosition - 1;
+		lengthToRead = (int)[data length] - currentPosition - 1;
 		range = NSMakeRange(currentPosition, lengthToRead);
 	}
 	
@@ -132,7 +136,7 @@ fill_input_buffer (j_decompress_ptr cinfo)
 	
   data_src_ptr src = (data_src_ptr) cinfo->src;
   size_t nbytes;
-	nbytes = readFromData(src->data, src->buffer, src->currentPosition, INPUT_BUF_SIZE);
+	nbytes = readFromData(src->data, src->buffer, (int)src->currentPosition, INPUT_BUF_SIZE);
   //nbytes = JFREAD(src->infile, src->buffer, INPUT_BUF_SIZE);
 
   if (nbytes <= 0) {

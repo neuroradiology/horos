@@ -5,9 +5,13 @@
  it under the terms of the GNU Lesser General Public License as published by
  the Free Software Foundation,  version 3 of the License.
  
- Portions of the Horos Project were originally licensed under the GNU GPL license.
- However, all authors of that software have agreed to modify the license to the
- GNU LGPL.
+ The Horos Project was based originally upon the OsiriX Project which at the time of
+ the code fork was licensed as a LGPL project.  However, not all of the the source-code
+ was properly documented and file headers were not all updated with the appropriate
+ license terms. The Horos Project, originally was licensed under the  GNU GPL license.
+ However, contributors to the software since that time have agreed to modify the license
+ to the GNU LGPL in order to be conform to the changes previously made to the
+ OsiriX Project.
  
  Horos is distributed in the hope that it will be useful, but
  WITHOUT ANY WARRANTY EXPRESS OR IMPLIED, INCLUDING ANY WARRANTY OF
@@ -32,10 +36,11 @@
  ============================================================================*/
 
 
-#import "browserController.h"
+#import "BrowserController.h"
 #import "DICOMToNSString.h"
+#import "DicomDatabase.h"
 #import "LogManager.h"
-#import "dicomFile.h"
+#import "DicomFile.h"
 
 #undef verify
 
@@ -408,7 +413,7 @@ OFCondition DcmQueryRetrieveOsiriXDatabaseHandle::updateLogEntry(DcmDataset *dat
         for( int i = 0; i < 10; i++) encoding[ i] = 0;
         encoding[ 0] = NSISOLatin1StringEncoding;
         
-        NSArray	*c = [[NSString stringWithCString: specificCharacterSet] componentsSeparatedByString:@"\\"];
+        NSArray	*c = [[NSString stringWithUTF8String: specificCharacterSet] componentsSeparatedByString:@"\\"];
         
         if( [c count] < 10)
         {
@@ -1230,7 +1235,7 @@ OFCondition DcmQueryRetrieveOsiriXDatabaseHandle::makeNewStoreFileName(
 	unsigned seedvalue = seed;
     newImageFileName[0] = 0; // return empty string in case of error
 	
-	if (! fnamecreator.makeFilename(seedvalue, [[BrowserController currentBrowser] cfixedTempNoIndexDirectory], prefix, ".dcm", filename))
+	if (! fnamecreator.makeFilename(seedvalue, [[DicomDatabase activeLocalDatabase] tempDirPathC], prefix, ".dcm", filename))
 	{
 		return DcmQROsiriXDatabaseError;
 	}

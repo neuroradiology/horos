@@ -5,9 +5,13 @@
  it under the terms of the GNU Lesser General Public License as published by
  the Free Software Foundation,  version 3 of the License.
  
- Portions of the Horos Project were originally licensed under the GNU GPL license.
- However, all authors of that software have agreed to modify the license to the
- GNU LGPL.
+ The Horos Project was based originally upon the OsiriX Project which at the time of
+ the code fork was licensed as a LGPL project.  However, not all of the the source-code
+ was properly documented and file headers were not all updated with the appropriate
+ license terms. The Horos Project, originally was licensed under the  GNU GPL license.
+ However, contributors to the software since that time have agreed to modify the license
+ to the GNU LGPL in order to be conform to the changes previously made to the
+ OsiriX Project.
  
  Horos is distributed in the hope that it will be useful, but
  WITHOUT ANY WARRANTY EXPRESS OR IMPLIED, INCLUDING ANY WARRANTY OF
@@ -113,7 +117,7 @@
 	if (lstat([[NSFileManager defaultManager]
 		fileSystemRepresentationWithPath:path], &fileInfo) < 0)
 	{
-		return nil;
+		return self;
 	}
 
 	//
@@ -221,7 +225,10 @@
 		symlinkPath =
 			[[self stringByDeletingLastPathComponent]
 				stringByAppendingPathComponent:symlinkPath];
-		symlinkPath = [symlinkPath stringByStandardizingPath];
+		
+        NSString *standardizedPath = [symlinkPath stringByStandardizingPath];
+        if (![standardizedPath isEqualToString:self]) // avoid looping on resolving the alias and standardizing it back to the original alias
+            symlinkPath = standardizedPath;
 	}
 	return symlinkPath;
 }
@@ -236,32 +243,23 @@
 //
 - (NSString *)stringByConditionallyResolvingAlias
 {
-	NSString *resolvedPath = nil;
-
-	CFURLRef url = CFURLCreateWithFileSystemPath
-		(kCFAllocatorDefault, (CFStringRef)self, kCFURLPOSIXPathStyle, NO);
-	if (url != NULL)
-	{
-		FSRef fsRef;
-		if (CFURLGetFSRef(url, &fsRef))
-		{
-			Boolean targetIsFolder, wasAliased;
-			OSErr err = FSResolveAliasFileWithMountFlags(
-				&fsRef, false, &targetIsFolder, &wasAliased, kResolveAliasFileNoUI);
-			if ((err == noErr) && wasAliased)
-			{
-				CFURLRef resolvedUrl = CFURLCreateFromFSRef(kCFAllocatorDefault, &fsRef);
-				if (resolvedUrl != NULL)
-				{
-					resolvedPath =
-						[(id)NSMakeCollectable(CFURLCopyFileSystemPath(resolvedUrl, kCFURLPOSIXPathStyle))
-							autorelease];
-					CFRelease(resolvedUrl);
-				}
-			}
-		}
-		CFRelease(url);
-	}
+    NSString *resolvedPath = nil;
+    CFURLRef	url = CFURLCreateWithFileSystemPath(NULL, (CFStringRef)self, kCFURLPOSIXPathStyle, NO);
+    if (url != NULL)
+    {
+        CFDataRef bd = CFURLCreateBookmarkDataFromFile(NULL, url, NULL);
+        if (bd) {
+            CFURLRef r = CFURLCreateByResolvingBookmarkData(NULL, bd, kCFBookmarkResolutionWithoutUIMask, NULL, NULL, NULL, NULL);
+            if (r) {
+                resolvedPath = CFBridgingRelease(CFURLCopyFileSystemPath(r, kCFURLPOSIXPathStyle));
+                CFRelease(r);
+            }
+            
+            CFRelease(bd);
+        }
+        
+        CFRelease(url);
+    }
 
 	return resolvedPath;
 }

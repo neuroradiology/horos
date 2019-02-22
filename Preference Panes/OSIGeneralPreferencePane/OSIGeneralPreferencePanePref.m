@@ -5,9 +5,13 @@
  it under the terms of the GNU Lesser General Public License as published by
  the Free Software Foundation,  version 3 of the License.
  
- Portions of the Horos Project were originally licensed under the GNU GPL license.
- However, all authors of that software have agreed to modify the license to the
- GNU LGPL.
+ The Horos Project was based originally upon the OsiriX Project which at the time of
+ the code fork was licensed as a LGPL project.  However, not all of the the source-code
+ was properly documented and file headers were not all updated with the appropriate
+ license terms. The Horos Project, originally was licensed under the  GNU GPL license.
+ However, contributors to the software since that time have agreed to modify the license
+ to the GNU LGPL in order to be conform to the changes previously made to the
+ OsiriX Project.
  
  Horos is distributed in the hope that it will be useful, but
  WITHOUT ANY WARRANTY EXPRESS OR IMPLIED, INCLUDING ANY WARRANTY OF
@@ -33,10 +37,10 @@
 
 
 #import "OSIGeneralPreferencePanePref.h"
-#import <HorosAPI/NSPreferencePane+OsiriX.h>
-#import <HorosAPI/AppController.h>
-#import <HorosAPI/DefaultsOsiriX.h>
-#import <HorosAPI/N2Debug.h>
+#import "NSPreferencePane+OsiriX.h"
+#import "AppController.h"
+#import "DefaultsOsiriX.h"
+#import "N2Debug.h"
 
 static NSArray *languagesToMoveWhenQuitting = nil;
 
@@ -90,7 +94,9 @@ static NSArray *languagesToMoveWhenQuitting = nil;
         }
         
 		NSNib *nib = [[[NSNib alloc] initWithNibNamed: @"OSIGeneralPreferencePanePref" bundle: nil] autorelease];
-		[nib instantiateNibWithOwner:self topLevelObjects: nil];
+		[nib instantiateWithOwner:self topLevelObjects:&_tlos];
+        
+        [compressionSettingsWindow retain];
 		
 		[self setMainView: [mainWindow contentView]];
 		[self mainViewDidLoad];
@@ -296,6 +302,10 @@ static NSArray *languagesToMoveWhenQuitting = nil;
 	NSLog(@"dealloc OSIGeneralPreferencePanePref");
 	
     [languages release];
+    
+    [compressionSettingsWindow release];
+    
+    [_tlos release]; _tlos = nil;
     
 	[super dealloc];
 }

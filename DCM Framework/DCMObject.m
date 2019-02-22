@@ -5,9 +5,13 @@
  it under the terms of the GNU Lesser General Public License as published by
  the Free Software Foundation, Êversion 3 of the License.
  
- Portions of the Horos Project were originally licensed under the GNU GPL license.
- However, all authors of that software have agreed to modify the license to the
- GNU LGPL.
+ The Horos Project was based originally upon the OsiriX Project which at the time of
+ the code fork was licensed as a LGPL project.  However, not all of the the source-code
+ was properly documented and file headers were not all updated with the appropriate
+ license terms. The Horos Project, originally was licensed under the  GNU GPL license.
+ However, contributors to the software since that time have agreed to modify the license
+ to the GNU LGPL in order to be conform to the changes previously made to the
+ OsiriX Project.
  
  Horos is distributed in the hope that it will be useful, but
  WITHOUT ANY WARRANTY EXPRESS OR IMPLIED, INCLUDING ANY WARRANTY OF
@@ -292,7 +296,7 @@ static NSString* getMacAddressNumber( void)
 	if( [data length] < 132) return NO;
 	unsigned char *string = (unsigned char *)[data bytes];
 	//unsigned char *string2 = string + 128;
-	//NSLog(@"dicom at 128: %@" , [NSString  stringWithCString:string2 length:4]);
+	//NSLog(@"dicom at 128: %@" , [NSString  stringWithUTF8String:string2 length:4]);
 	if (string[128] == 'D' && string[129] == 'I'&& string[130] == 'C' && string[131] == 'M')
 		return YES;
 	return NO;
@@ -920,7 +924,7 @@ PixelRepresentation
                     if( [DCMValueRepresentation isSequenceVR:vr] || ([DCMValueRepresentation  isUnknownVR:vr] && vl == 0xFFFFFFFF))
                     {
                         attr = (DCMAttribute *) [[[DCMSequenceAttribute alloc] initWithAttributeTag:(DCMAttributeTag *)tag] autorelease];
-                        *byteOffset = [self readNewSequenceAttribute:attr dicomData:dicomData byteOffset:byteOffset lengthToRead:vl specificCharacterSet:specificCharacterSet];
+                        *byteOffset = [self readNewSequenceAttribute:attr dicomData:dicomData byteOffset:byteOffset lengthToRead:(int)vl specificCharacterSet:specificCharacterSet];
                     } 
                     // "7FE0,0010" == PixelData
                     else if (strcmp(tagUTF8, "7FE0,0010") == 0 && tag.isPrivate == NO)
@@ -949,7 +953,7 @@ PixelRepresentation
                         else
                         {
                             attr = nil;
-                            [dicomData skipLength:vl];
+                            [dicomData skipLength:(int)vl];
                         }
                         *byteOffset += vl;
                         if (DCMDEBUG)
@@ -1060,7 +1064,7 @@ PixelRepresentation
                 else if ([tag.stringValue isEqualToString:[sharedTagForNameDictionary objectForKey:@"Item"]]) {
                     if (DCMDEBUG)
                         NSLog(@"New Item");
-                    DCMObject *object = [[[[self class] alloc] initWithDataContainer:dicomData lengthToRead:vl byteOffset:byteOffset characterSet:specificCharacterSet decodingPixelData:NO] autorelease];
+                    DCMObject *object = [[[[self class] alloc] initWithDataContainer:dicomData lengthToRead:(int)vl byteOffset:byteOffset characterSet:specificCharacterSet decodingPixelData:NO] autorelease];
                     object.isSequence = YES;
                     [(DCMSequenceAttribute *)attr  addItem:object offset:itemStartOffset];
                     if (DCMDEBUG)
@@ -1073,6 +1077,7 @@ PixelRepresentation
             }
             @catch( NSException *e) {
                 NSLog( @"%@", e);
+//                break; // Horos bug #210 provided to OP, but OP stopped responding to email
             }
             @finally {
                 [subPool release];
@@ -1314,6 +1319,10 @@ PixelRepresentation
 	return [[self attributeForTag:[DCMAttributeTag tagWithName:name]] values];
 }
 
+- (NSArray *)attributeArrayForKey:(NSString *)key{
+    return [[attributes objectForKey:key] values];
+}
+
 - (void)setAttribute:(DCMAttribute *)attr{
 	[attributes setObject:attr  forKey:[(DCMAttributeTag *)[attr attrTag] stringValue]];
 }
@@ -1522,7 +1531,7 @@ PixelRepresentation
 	int value = 0;
 	char newChar = 0;
 	char x;
-	int length = [string length];
+	int length = (int)[string length];
 	char newString[length];
 	const char *chars = [string UTF8String];
 	while (i < length) {

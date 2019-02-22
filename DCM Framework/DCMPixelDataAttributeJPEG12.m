@@ -5,9 +5,13 @@
  it under the terms of the GNU Lesser General Public License as published by
  the Free Software Foundation,  version 3 of the License.
  
- Portions of the Horos Project were originally licensed under the GNU GPL license.
- However, all authors of that software have agreed to modify the license to the
- GNU LGPL.
+ The Horos Project was based originally upon the OsiriX Project which at the time of
+ the code fork was licensed as a LGPL project.  However, not all of the the source-code
+ was properly documented and file headers were not all updated with the appropriate
+ license terms. The Horos Project, originally was licensed under the  GNU GPL license.
+ However, contributors to the software since that time have agreed to modify the license
+ to the GNU LGPL in order to be conform to the changes previously made to the
+ OsiriX Project.
  
  Horos is distributed in the hope that it will be useful, but
  WITHOUT ANY WARRANTY EXPRESS OR IMPLIED, INCLUDING ANY WARRANTY OF
@@ -54,7 +58,7 @@ readFromData12(NSData *data, JOCTET *buffer, int currentPosition, int length)
 	}
 	else
 	{
-		lengthToRead = [data length] - currentPosition;
+		lengthToRead = (int)[data length] - currentPosition;
 		range = NSMakeRange(currentPosition, lengthToRead);
 	}
 	
@@ -83,24 +87,24 @@ typedef struct
 } JPEG12ErrorStruct ;
 typedef JPEG12ErrorStruct * JPEG12ErrorPtr;
 
-METHODDEF(void) JPEG12ErrorExit(j_common_ptr cinfo)
-{
-	(*cinfo->err->output_message)(cinfo);
-	char buffer[JMSG_LENGTH_MAX]; 
-	(*cinfo->err->format_message) (cinfo, buffer);
-	NSLog(@"JPEG error %s", buffer);
-}
-
-METHODDEF(void) JPEG12OutputMessage(j_common_ptr cinfo)
-{
-	//JPEG8ErrorStruct *myerr = (JPEG8ErrorStruct *)cinfo->err;
-	char buffer[JMSG_LENGTH_MAX]; 
-	//char buffer[100];   
-	/* Create the message */
-  (*cinfo->err->format_message) (cinfo, buffer);
-	NSLog(@"JPEG error %s", buffer);
-  
-}
+//METHODDEF(void) JPEG12ErrorExit(j_common_ptr cinfo)
+//{
+//	(*cinfo->err->output_message)(cinfo);
+//	char buffer[JMSG_LENGTH_MAX]; 
+//	(*cinfo->err->format_message) (cinfo, buffer);
+//	NSLog(@"JPEG error %s", buffer);
+//}
+//
+//METHODDEF(void) JPEG12OutputMessage(j_common_ptr cinfo)
+//{
+//	//JPEG8ErrorStruct *myerr = (JPEG8ErrorStruct *)cinfo->err;
+//	char buffer[JMSG_LENGTH_MAX]; 
+//	//char buffer[100];   
+//	/* Create the message */
+//  (*cinfo->err->format_message) (cinfo, buffer);
+//	NSLog(@"JPEG error %s", buffer);
+//  
+//}
 
 
 
@@ -186,7 +190,7 @@ fill_input_buffer (j_decompress_ptr cinfo)
 	
   data12_src_ptr src = (data12_src_ptr) cinfo->src;
   size_t nbytes;
-	nbytes = readFromData12(src->data, src->buffer, src->currentPosition, INPUT_BUF_SIZE);
+	nbytes = readFromData12(src->data, src->buffer, (int)src->currentPosition, INPUT_BUF_SIZE);
   //nbytes = JFREAD(src->infile, src->buffer, INPUT_BUF_SIZE);
 
   if (nbytes <= 0) {
@@ -375,7 +379,7 @@ term_destination12 (j_compress_ptr cinfo)
   /* Write any data remaining in the buffer */
  
   if (datacount > 0) {
-    if (writeToData12(dest->data, dest->buffer,  datacount) != datacount) {
+    if (writeToData12(dest->data, dest->buffer, (int)datacount) != datacount) {
 	}
   //    ERREXIT(cinfo, JERR_FILE_WRITE);
   }

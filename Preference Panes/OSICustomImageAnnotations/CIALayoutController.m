@@ -5,9 +5,13 @@
  it under the terms of the GNU Lesser General Public License as published by
  the Free Software Foundation,  version 3 of the License.
  
- Portions of the Horos Project were originally licensed under the GNU GPL license.
- However, all authors of that software have agreed to modify the license to the
- GNU LGPL.
+ The Horos Project was based originally upon the OsiriX Project which at the time of
+ the code fork was licensed as a LGPL project.  However, not all of the the source-code
+ was properly documented and file headers were not all updated with the appropriate
+ license terms. The Horos Project, originally was licensed under the  GNU GPL license.
+ However, contributors to the software since that time have agreed to modify the license
+ to the GNU LGPL in order to be conform to the changes previously made to the
+ OsiriX Project.
  
  Horos is distributed in the hope that it will be useful, but
  WITHOUT ANY WARRANTY EXPRESS OR IMPLIED, INCLUDING ANY WARRANTY OF
@@ -453,7 +457,7 @@
 		for (i=0; i<numberOfHighlightedPlaceHolders; i++)
 		{
 			placeHolderCenter = [[highlightedPlaceHolders objectAtIndex:i] frame].origin.x + [[highlightedPlaceHolders objectAtIndex:i] frame].size.width/2.0;
-			distanceToMouse[i] = fabsf(mouseLocationInView.x - placeHolderCenter);
+			distanceToMouse[i] = fabs(mouseLocationInView.x - placeHolderCenter);
 		}
 
 		float minDistance = MAXFLOAT;
@@ -690,32 +694,32 @@
 - (void)resizeTokenField; // not used
 {
 	return;
-	int i;
-	NSRect oldTokenFieldFrame = [[prefPane contentTokenField] frame];
-	NSSize cellSize = [[[prefPane contentTokenField] cell] cellSizeForBounds:[[prefPane contentTokenField] bounds]];
-
-	NSBox *globalPaneBox = [[[[self window] contentView] subviews] objectAtIndex:0];
-	
-	for (i=0; i<[[globalPaneBox subviews] count]; i++)
-	{
-		NSView *currentView = [[globalPaneBox subviews] objectAtIndex:i];
-
-		if(currentView==[prefPane contentTokenField] || currentView==[prefPane contentBox])
-		{
-			[currentView setFrameOrigin:NSMakePoint([currentView frame].origin.x, [currentView frame].origin.y-oldTokenFieldFrame.size.height+cellSize.height)];
-		}
-	}
-
-	[[[[[self window] contentView] subviews] objectAtIndex:0] display];
-
-	[[prefPane contentTokenField] setFrame:NSMakeRect(oldTokenFieldFrame.origin.x, oldTokenFieldFrame.origin.y, oldTokenFieldFrame.size.width, cellSize.height)];
-	
-	NSPoint loc = [selectedAnnotation mouseDownLocation];
-	loc.y -= oldTokenFieldFrame.size.height-cellSize.height;
-	[selectedAnnotation setMouseDownLocation:loc];
-
-	[[self window] setFrame:NSMakeRect([[self window] frame].origin.x, [[self window] frame].origin.y+oldTokenFieldFrame.size.height-cellSize.height, [[self window] frame].size.width, [[self window] frame].size.height-oldTokenFieldFrame.size.height+cellSize.height) display:YES];
-	
+//	int i;
+//	NSRect oldTokenFieldFrame = [[prefPane contentTokenField] frame];
+//	NSSize cellSize = [[[prefPane contentTokenField] cell] cellSizeForBounds:[[prefPane contentTokenField] bounds]];
+//
+//	NSBox *globalPaneBox = [[[[self window] contentView] subviews] objectAtIndex:0];
+//	
+//	for (i=0; i<[[globalPaneBox subviews] count]; i++)
+//	{
+//		NSView *currentView = [[globalPaneBox subviews] objectAtIndex:i];
+//
+//		if(currentView==[prefPane contentTokenField] || currentView==[prefPane contentBox])
+//		{
+//			[currentView setFrameOrigin:NSMakePoint([currentView frame].origin.x, [currentView frame].origin.y-oldTokenFieldFrame.size.height+cellSize.height)];
+//		}
+//	}
+//
+//	[[[[[self window] contentView] subviews] objectAtIndex:0] display];
+//
+//	[[prefPane contentTokenField] setFrame:NSMakeRect(oldTokenFieldFrame.origin.x, oldTokenFieldFrame.origin.y, oldTokenFieldFrame.size.width, cellSize.height)];
+//	
+//	NSPoint loc = [selectedAnnotation mouseDownLocation];
+//	loc.y -= oldTokenFieldFrame.size.height-cellSize.height;
+//	[selectedAnnotation setMouseDownLocation:loc];
+//
+//	[[self window] setFrame:NSMakeRect([[self window] frame].origin.x, [[self window] frame].origin.y+oldTokenFieldFrame.size.height-cellSize.height, [[self window] frame].size.width, [[self window] frame].size.height-oldTokenFieldFrame.size.height+cellSize.height) display:YES];
+//	
 }
 
 - (void)controlTextDidEndEditing:(NSNotification *)aNotification
@@ -757,7 +761,7 @@
 - (NSArray *)tokenField:(NSTokenField *)tokenField readFromPasteboard:(NSPasteboard *)pboard
 {
 	// handles drag & drop of several tokens
-	return [[pboard stringForType:NSStringPboardType] componentsSeparatedByString:@", "];
+	return [[pboard stringForType:NSPasteboardTypeString] componentsSeparatedByString:@", "];
 }
 
 - (NSArray *)tokenField:(NSTokenField *)tokenField shouldAddObjects:(NSArray *)tokens atIndex:(NSUInteger)index

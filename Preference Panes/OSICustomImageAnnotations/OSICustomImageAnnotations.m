@@ -5,9 +5,13 @@
  it under the terms of the GNU Lesser General Public License as published by
  the Free Software Foundation,  version 3 of the License.
  
- Portions of the Horos Project were originally licensed under the GNU GPL license.
- However, all authors of that software have agreed to modify the license to the
- GNU LGPL.
+ The Horos Project was based originally upon the OsiriX Project which at the time of
+ the code fork was licensed as a LGPL project.  However, not all of the the source-code
+ was properly documented and file headers were not all updated with the appropriate
+ license terms. The Horos Project, originally was licensed under the  GNU GPL license.
+ However, contributors to the software since that time have agreed to modify the license
+ to the GNU LGPL in order to be conform to the changes previously made to the
+ OsiriX Project.
  
  Horos is distributed in the hope that it will be useful, but
  WITHOUT ANY WARRANTY EXPRESS OR IMPLIED, INCLUDING ANY WARRANTY OF
@@ -32,7 +36,8 @@
  ============================================================================*/
 
 #import "OSICustomImageAnnotations.h"
-#import <HorosAPI/NSPreferencePane+OsiriX.h>
+#import "PreferencesWindowController+DCMTK.h"
+#import "NSPreferencePane+OsiriX.h"
 
 NSComparisonResult  compareViewTags(id firstView, id secondView, void * context);
 NSComparisonResult  compareViewTags(id firstView, id secondView, void * context)
@@ -67,13 +72,19 @@ NSComparisonResult  compareViewTags(id firstView, id secondView, void * context)
 	if( self = [super init])
 	{
 		NSNib *nib = [[[NSNib alloc] initWithNibNamed: @"OSICustomImageAnnotations" bundle: nil] autorelease];
-		[nib instantiateNibWithOwner:self topLevelObjects: nil];
+		[nib instantiateWithOwner:self topLevelObjects:&_tlos];
 		
 		[self setMainView: [mainWindow contentView]];
 		[self mainViewDidLoad];
 	}
 	
 	return self;
+}
+
+- (void)dealloc {
+    [_tlos release]; _tlos = nil;
+    
+    [super dealloc];
 }
 
 - (void)mainViewDidLoad {
@@ -102,35 +113,39 @@ NSComparisonResult  compareViewTags(id firstView, id secondView, void * context)
 	{
 		[self switchModality: modalitiesPopUpButton save: YES];
 		
-		NSDictionary *cur = [layoutController curDictionary];
-		NSSavePanel		*sPanel		= [NSSavePanel savePanel];
-		[sPanel setRequiredFileType:@"plist"];
-		
-		if ([sPanel runModalForDirectory:0L file: [NSString stringWithFormat:@"%@.plist", [[modalitiesPopUpButton selectedItem] title] ]] == NSFileHandlingPanelOKButton)
-			[cur writeToFile: [sPanel filename] atomically: YES];
+		NSSavePanel *sPanel = [NSSavePanel savePanel];
+		[sPanel setAllowedFileTypes:@[@"plist"]];
+        sPanel.nameFieldStringValue = [NSString stringWithFormat:@"%@.plist", [[modalitiesPopUpButton selectedItem] title] ];
+        
+        [sPanel beginWithCompletionHandler:^(NSInteger result) {
+            if (result != NSFileHandlingPanelOKButton)
+                return;
+            
+            [[layoutController curDictionary] writeToURL:sPanel.URL atomically:YES];
+        }];
 	}
 	else						// Load
 	{
-		NSOpenPanel		*sPanel		= [NSOpenPanel openPanel];
-	
-		[sPanel setRequiredFileType:@"plist"];
-	
-		if ([sPanel runModalForDirectory:0L file:nil types:[NSArray arrayWithObject:@"plist"]] == NSFileHandlingPanelOKButton)
-		{
-			NSDictionary *cur = [NSDictionary dictionaryWithContentsOfFile: [sPanel filename]];
-			
-			if( cur)
-			{
-				if( NSRunInformationalAlertPanel( NSLocalizedString(@"Settings", nil), NSLocalizedString( @"Are you really sure you want to replace current settings? It will delete the current settings.", nil) , NSLocalizedString(@"OK", nil), NSLocalizedString(@"Cancel", nil), 0L) == NSAlertDefaultReturn)
-				{
-					NSMutableDictionary *annotationsLayoutDictionary = [layoutController annotationsLayoutDictionary];
-				
-					[annotationsLayoutDictionary setObject: cur  forKey: [layoutController currentModality]];
-				
-					[self switchModality: modalitiesPopUpButton save: NO];
-				}
-			}
-		}
+		NSOpenPanel *sPanel = [NSOpenPanel openPanel];
+        [sPanel setAllowedFileTypes:@[@"plist"]];
+
+        [sPanel beginWithCompletionHandler:^(NSInteger result) {
+            if (result != NSFileHandlingPanelOKButton)
+                return;
+            
+            NSDictionary *cur = [NSDictionary dictionaryWithContentsOfURL:sPanel.URL];
+            if( cur)
+            {
+                if( NSRunInformationalAlertPanel( NSLocalizedString(@"Settings", nil), NSLocalizedString( @"Are you really sure you want to replace current settings? It will delete the current settings.", nil) , NSLocalizedString(@"OK", nil), NSLocalizedString(@"Cancel", nil), 0L) == NSAlertDefaultReturn)
+                {
+                    NSMutableDictionary *annotationsLayoutDictionary = [layoutController annotationsLayoutDictionary];
+                    
+                    [annotationsLayoutDictionary setObject: cur  forKey: [layoutController currentModality]];
+                    
+                    [self switchModality: modalitiesPopUpButton save: NO];
+                }
+            }
+        }];
 	}
 }
 

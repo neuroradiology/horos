@@ -5,9 +5,13 @@
  it under the terms of the GNU Lesser General Public License as published by
  the Free Software Foundation,  version 3 of the License.
  
- Portions of the Horos Project were originally licensed under the GNU GPL license.
- However, all authors of that software have agreed to modify the license to the
- GNU LGPL.
+ The Horos Project was based originally upon the OsiriX Project which at the time of
+ the code fork was licensed as a LGPL project.  However, not all of the the source-code
+ was properly documented and file headers were not all updated with the appropriate
+ license terms. The Horos Project, originally was licensed under the  GNU GPL license.
+ However, contributors to the software since that time have agreed to modify the license
+ to the GNU LGPL in order to be conform to the changes previously made to the
+ OsiriX Project.
  
  Horos is distributed in the hope that it will be useful, but
  WITHOUT ANY WARRANTY EXPRESS OR IMPLIED, INCLUDING ANY WARRANTY OF
@@ -32,13 +36,13 @@
  ============================================================================*/
 
 #import "OSIListenerPreferencePanePref.h"
-#import <HorosAPI/DefaultsOsiriX.h>
-#import <HorosAPI/BrowserController.h>
-#import <HorosAPI/NSUserDefaultsController+OsiriX.h>
+#import "DefaultsOsiriX.h"
+#import "BrowserController.h"
+#import "NSUserDefaultsController+OsiriX.h"
 //#import "DDKeychain.h"
 #import <SecurityInterface/SFChooseIdentityPanel.h>
-#import <HorosAPI/WebPortal.h>
-#import <HorosAPI/WebPortalDatabase.h>
+#import "WebPortal.h"
+#import "WebPortalDatabase.h"
 #import "NSAppleScript+N2.h"
 
 #include <netdb.h>
@@ -78,18 +82,15 @@
 	if( self = [super init])
 	{
 		NSNib *nib = [[[NSNib alloc] initWithNibNamed: @"OSIListenerPreferencePanePref" bundle: nil] autorelease];
-		[nib instantiateNibWithOwner:self topLevelObjects: nil];
+		[nib instantiateWithOwner:self topLevelObjects:&_tlos];
+        
+        [TLSSettingsWindow retain];
 		
 		[self setMainView: [mainWindow contentView]];
 		[self mainViewDidLoad];
 	}
 	
 	return self;
-}
-
-- (NSManagedObjectContext*) managedObjectContext
-{
-	return WebPortal.defaultWebPortal.database.managedObjectContext;
 }
 
 -(NSArray*)IPv4Address;
@@ -122,7 +123,11 @@
 	[TLSAuthenticationCertificate release];
 	[TLSSupportedCipherSuite release];
 	[TLSDHParameterFileURL release];
-	[TLSStoreSCPAETITLE release];
+    [TLSStoreSCPAETITLE release];
+    
+    [TLSSettingsWindow release];
+    
+    [_tlos release]; _tlos = nil;
 	
 	[super dealloc];
 }
@@ -140,7 +145,7 @@
 
 	//setup GUI
 	
-//	NSString *ip = [NSString stringWithCString:GetPrivateIP()];
+//	NSString *ip = [NSString stringWithUTF8String:GetPrivateIP()];
 	NSString *ip = [[self IPv4Address] componentsJoinedByString:@", "];
 	char hostname[ _POSIX_HOST_NAME_MAX+1];
 	gethostname(hostname, _POSIX_HOST_NAME_MAX);

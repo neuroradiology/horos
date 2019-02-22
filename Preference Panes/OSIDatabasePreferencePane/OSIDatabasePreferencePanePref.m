@@ -5,9 +5,13 @@
  it under the terms of the GNU Lesser General Public License as published by
  the Free Software Foundation,  version 3 of the License.
  
- Portions of the Horos Project were originally licensed under the GNU GPL license.
- However, all authors of that software have agreed to modify the license to the
- GNU LGPL.
+ The Horos Project was based originally upon the OsiriX Project which at the time of
+ the code fork was licensed as a LGPL project.  However, not all of the the source-code
+ was properly documented and file headers were not all updated with the appropriate
+ license terms. The Horos Project, originally was licensed under the  GNU GPL license.
+ However, contributors to the software since that time have agreed to modify the license
+ to the GNU LGPL in order to be conform to the changes previously made to the
+ OsiriX Project.
  
  Horos is distributed in the hope that it will be useful, but
  WITHOUT ANY WARRANTY EXPRESS OR IMPLIED, INCLUDING ANY WARRANTY OF
@@ -32,14 +36,15 @@
  ============================================================================*/
 
 #import "OSIDatabasePreferencePanePref.h"
-#import <HorosAPI/PluginManager.h>
-#import <HorosAPI/BrowserController.h>
-#import <HorosAPI/PreferencesWindowController+DCMTK.h>
-#import <OsiriX/DCMAbstractSyntaxUID.h>
-#import <HorosAPI/BrowserControllerDCMTKCategory.h>
+#import "PluginManager.h"
+#import "BrowserController.h"
+#import "PreferencesWindowController+DCMTK.h"
+#import "DCMAbstractSyntaxUID.h"
+#import "BrowserControllerDCMTKCategory.h"
 #import "DicomDatabase.h"
-#import "dicomFile.h"
+#import "DicomFile.h"
 #import "WaitRendering.h"
+#import "ICloudDriveDetector.h"
 
 @implementation OSIDatabasePreferencePanePref
 
@@ -51,7 +56,7 @@
 	if( self = [super init])
 	{
 		NSNib *nib = [[[NSNib alloc] initWithNibNamed: @"OSIDatabasePreferencePanePref" bundle: nil] autorelease];
-		[nib instantiateNibWithOwner:self topLevelObjects: nil];
+		[nib instantiateWithOwner:self topLevelObjects:&_tlos];
 		
 		[self setMainView: [mainWindow contentView]];
 		[self mainViewDidLoad];
@@ -122,7 +127,9 @@
     [[NSUserDefaultsController sharedUserDefaultsController] removeObserver: self forKeyPath: @"values.eraseEntireDBAtStartup"];
     [[NSUserDefaultsController sharedUserDefaultsController] removeObserver: self forKeyPath: @"values.dbFontSize"];
     
-	[DICOMFieldsArray release];
+    [DICOMFieldsArray release];
+    
+    [_tlos release]; _tlos = nil;
 	
 	[super dealloc];
 }
@@ -479,10 +486,20 @@
 	}
 	
 	[[NSUserDefaults standardUserDefaults] setInteger:[[sender selectedCell] tag] forKey:@"DEFAULT_DATABASELOCATION"];
-	
+    
+    [[NSUserDefaults standardUserDefaults] synchronize];
+    
 	[[[[self mainView] window] windowController] reopenDatabase];
 	
 	[[[self mainView] window] makeKeyAndOrderFront: self];
+    
+    // TODO - It may be appropriate to request user to restart Horos, or upon trying to set a new location warn on iCloud Sync Issue.
+    // This should be done before setting the new path
+    
+    // Workaround (weak)
+    // On Horos initialization this will make Horos to check if local database folder is being synchronized over iCloud
+    [[NSUserDefaults standardUserDefaults] setObject:nil forKey:@"ICLOUD_DRIVE_SYNC_RISK_USER_IGNORED"];
+    [[NSUserDefaults standardUserDefaults] synchronize];
 }
 
 - (IBAction) resetDate:(id) sender
@@ -504,45 +521,55 @@
 	//NSLog(@"setLocation URL");
 		
 	NSOpenPanel         *oPanel = [NSOpenPanel openPanel];
-	long				result;
 	
     [oPanel setCanChooseFiles:NO];
     [oPanel setCanChooseDirectories:YES];
-	
-	result = [oPanel runModalForDirectory:0L file:nil types: 0L];
     
-    if (result == NSOKButton)
-	{
-		NSString	*location = [oPanel directory];
-		
-		if( [[location lastPathComponent] isEqualToString:@"Horos Data"])
-		{
-			NSLog( @"%@", [location lastPathComponent]);
-			location = [location stringByDeletingLastPathComponent];
-		}
-		
-		if( [[location lastPathComponent] isEqualToString:@"DATABASE"] && [[[location stringByDeletingLastPathComponent] lastPathComponent] isEqualToString:@"Horos Data"])
-		{
-			NSLog( @"%@", [location lastPathComponent]);
-			location = [[location stringByDeletingLastPathComponent] stringByDeletingLastPathComponent];
-		}
-		
-		[locationPathField setURL: [NSURL fileURLWithPath: location]];
-		[[NSUserDefaults standardUserDefaults] setObject:location forKey:@"DEFAULT_DATABASELOCATIONURL"];
-		[[NSUserDefaults standardUserDefaults] setInteger:1 forKey:@"DEFAULT_DATABASELOCATION"];
-		[locationMatrix selectCellWithTag:1];
-	}	
-	else 
-	{
-		[locationPathField setURL: 0L];
-		[[NSUserDefaults standardUserDefaults] setObject:@"" forKey:@"DEFAULT_DATABASELOCATIONURL"];
-		[[NSUserDefaults standardUserDefaults] setInteger:0 forKey:@"DEFAULT_DATABASELOCATION"];
-		[locationMatrix selectCellWithTag:0];
-	}
-	
-	[[[[self mainView] window] windowController] reopenDatabase];
-	
-	[[[self mainView] window] makeKeyAndOrderFront: self];
+    [oPanel beginWithCompletionHandler:^(NSInteger result) {
+        if (result == NSFileHandlingPanelOKButton)
+        {
+            NSString	*location = oPanel.URL.path;
+            
+            if( [[location lastPathComponent] isEqualToString:@"Horos Data"])
+            {
+                NSLog( @"%@", [location lastPathComponent]);
+                location = [location stringByDeletingLastPathComponent];
+            }
+            
+            if( [[location lastPathComponent] isEqualToString:@"DATABASE"] && [[[location stringByDeletingLastPathComponent] lastPathComponent] isEqualToString:@"Horos Data"])
+            {
+                NSLog( @"%@", [location lastPathComponent]);
+                location = [[location stringByDeletingLastPathComponent] stringByDeletingLastPathComponent];
+            }
+            
+            [locationPathField setURL: [NSURL fileURLWithPath: location]];
+            [[NSUserDefaults standardUserDefaults] setObject:location forKey:@"DEFAULT_DATABASELOCATIONURL"];
+            [[NSUserDefaults standardUserDefaults] setInteger:1 forKey:@"DEFAULT_DATABASELOCATION"];
+            [locationMatrix selectCellWithTag:1];
+        }
+        else
+        {
+            [locationPathField setURL: 0L];
+            [[NSUserDefaults standardUserDefaults] setObject:@"" forKey:@"DEFAULT_DATABASELOCATIONURL"];
+            [[NSUserDefaults standardUserDefaults] setInteger:0 forKey:@"DEFAULT_DATABASELOCATION"];
+            [locationMatrix selectCellWithTag:0];
+        }
+        
+        [[NSUserDefaults standardUserDefaults] synchronize];
+        
+        [[[[self mainView] window] windowController] reopenDatabase];
+        
+        [[[self mainView] window] makeKeyAndOrderFront: self];
+       
+        // TODO - It may be appropriate to request user to restart Horos, or upon trying to set a new location warn on iCloud Sync Issue.
+        // This should be done before setting the new path
+        
+        // Workaround (weak)
+        // On Horos initialization this will make Horos to check if local database folder is being synchronized over iCloud
+        [[NSUserDefaults standardUserDefaults] setObject:nil forKey:@"ICLOUD_DRIVE_SYNC_RISK_USER_IGNORED"];
+        [[NSUserDefaults standardUserDefaults] synchronize];
+    }];
+    
 }
 
 - (BOOL)useSeriesDescription{
