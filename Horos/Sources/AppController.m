@@ -1026,9 +1026,12 @@ void exceptionHandler(NSException *exception)
         
 		NSString *pluginBundleVersion = nil;
 		if(versionString != NULL)
-            pluginBundleVersion = CFBridgingRelease(versionString);
+            pluginBundleVersion = (__bridge NSString*) versionString;
 		else
-			pluginBundleVersion = @"";		
+			pluginBundleVersion = @"";
+		
+		if (bundleInfoDict != NULL)
+			CFRelease(bundleInfoDict);
 		
 		for(NSDictionary *plug in [PluginManager pluginsList])
 		{
