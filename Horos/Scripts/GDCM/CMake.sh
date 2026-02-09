@@ -48,7 +48,13 @@ args+=(-DGDCM_USE_SYSTEM_OPENJPEG=ON)
 
 args+=(-DCMAKE_IGNORE_PATH="/opt/local/include;/opt/local/lib")
 
-export PKG_CONFIG_PATH="$CONFIGURATION_TEMP_DIR/OpenJPEG.build/Install/lib/pkgconfig"
+openjpeg_install="$CONFIGURATION_TEMP_DIR/OpenJPEG.build/Install"
+openjpeg_include="$openjpeg_install/include/openjpeg-2.5"
+if [ ! -d "$openjpeg_include" ]; then
+    openjpeg_include="$openjpeg_install/include/openjpeg-2.3"
+fi
+args+=(-DOPENJPEG_LIBRARIES="$openjpeg_install/lib/libopenjp2.a")
+args+=(-DOPENJPEG_INCLUDE_DIRS="$openjpeg_include")
 
 # currently, GDCM 2.8.3 uses CharLS 1.1, using our CharLS 2.0.0 won't compile
 #args+=(-DGDCM_USE_SYSTEM_CHARLS=ON)

@@ -22,6 +22,12 @@ make install
 
 rsync "$cmake_dir/bin/libopenjp2.a" "$install_dir/lib/" # somehow the lib isn't copied by make-install
 rsync "$source_dir/src/bin/common/format_defs.h" "$install_dir/include/OpenJPEG/" # we need this header
+# Ensure OpenJPEG headers are available at include/OpenJPEG for legacy includes
+if [ -d "$install_dir/include/openjpeg-2.5" ]; then
+    rsync -a "$install_dir/include/openjpeg-2.5/" "$install_dir/include/OpenJPEG/"
+elif [ -d "$install_dir/include/openjpeg-2.3" ]; then
+    rsync -a "$install_dir/include/openjpeg-2.3/" "$install_dir/include/OpenJPEG/"
+fi
 
 rm -f "$install_dir/.incomplete"
 

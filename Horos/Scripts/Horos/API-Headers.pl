@@ -13,6 +13,12 @@ print Horos_h "#ifndef __Horos_API\n#define __Horos_API\n\n";
 my @fromdirs = ( "$ENV{PROJECT_DIR}/Nitrogen/Sources", "$ENV{PROJECT_DIR}/Nitrogen/Sources/JSON", "$ENV{PROJECT_DIR}/Horos/Sources" );
 # TODO: "$ENV{PROJECT_DIR}/cocoahttpserver",
 
+print STDERR "API-Headers.pl debug\n";
+print STDERR "TARGET_BUILD_DIR=$ENV{TARGET_BUILD_DIR}\n";
+print STDERR "PUBLIC_HEADERS_FOLDER_PATH=$ENV{PUBLIC_HEADERS_FOLDER_PATH}\n";
+print STDERR "DESTINATION=$destination\n";
+print STDERR "PROJECT_DIR=$ENV{PROJECT_DIR}\n";
+
 foreach my $root (@fromdirs) {
     opendir(DIR, $root);
     
@@ -20,8 +26,9 @@ foreach my $root (@fromdirs) {
     foreach (@files) {
         my $filename = $_;
         next unless -f "$root/$filename" && $filename =~ /\.h$/s;
+        print STDERR "Copying $root/$filename -> $destination/".(basename $filename)."\n";
         my @args = ( "cp", "-fp", "$root/$filename", "$destination/".(basename $filename) );
-        system(@args) == 0 or die "Copy failed: $?";
+        system(@args) == 0 or die "Copy failed: $? ($!)";
         print Horos_h "#include <Horos/$filename>\n";
     }
     

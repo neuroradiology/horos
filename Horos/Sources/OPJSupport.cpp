@@ -59,6 +59,80 @@
 #define WITH_OPJ_FILE_STREAM
 //#define OPJ_VERBOSE
 
+struct opj_memory_stream
+{
+    OPJ_BYTE* data;
+    OPJ_SIZE_T size;
+    OPJ_SIZE_T offset;
+};
+
+static OPJ_SIZE_T opj_read_from_memory(void* p_buffer, OPJ_SIZE_T p_nb_bytes, void* p_user_data)
+{
+    opj_memory_stream* ms = (opj_memory_stream*)p_user_data;
+    if (!ms || ms->offset >= ms->size) return (OPJ_SIZE_T)0;
+
+    OPJ_SIZE_T remaining = ms->size - ms->offset;
+    OPJ_SIZE_T read_bytes = (p_nb_bytes < remaining) ? p_nb_bytes : remaining;
+    if (read_bytes > 0)
+    {
+        memcpy(p_buffer, ms->data + ms->offset, read_bytes);
+        ms->offset += read_bytes;
+    }
+    return read_bytes;
+}
+
+static OPJ_OFF_T opj_skip_from_memory(OPJ_OFF_T p_nb_bytes, void* p_user_data)
+{
+    opj_memory_stream* ms = (opj_memory_stream*)p_user_data;
+    if (!ms) return (OPJ_OFF_T)-1;
+
+    OPJ_OFF_T new_pos = (OPJ_OFF_T)ms->offset + p_nb_bytes;
+    if (new_pos < 0) new_pos = 0;
+    if ((OPJ_SIZE_T)new_pos > ms->size) new_pos = (OPJ_OFF_T)ms->size;
+
+    OPJ_OFF_T skipped = new_pos - (OPJ_OFF_T)ms->offset;
+    ms->offset = (OPJ_SIZE_T)new_pos;
+    return skipped;
+}
+
+static OPJ_BOOL opj_seek_from_memory(OPJ_OFF_T p_nb_bytes, void* p_user_data)
+{
+    opj_memory_stream* ms = (opj_memory_stream*)p_user_data;
+    if (!ms) return OPJ_FALSE;
+    if (p_nb_bytes < 0 || (OPJ_SIZE_T)p_nb_bytes > ms->size) return OPJ_FALSE;
+    ms->offset = (OPJ_SIZE_T)p_nb_bytes;
+    return OPJ_TRUE;
+}
+
+static void opj_free_memory_stream(void* p_user_data)
+{
+    free(p_user_data);
+}
+
+static opj_stream_t* opj_stream_create_memory_stream(OPJ_BYTE* data, OPJ_SIZE_T size)
+{
+    opj_stream_t* stream = opj_stream_create(size, OPJ_TRUE);
+    if (!stream) return NULL;
+
+    opj_memory_stream* ms = (opj_memory_stream*)calloc(1, sizeof(opj_memory_stream));
+    if (!ms)
+    {
+        opj_stream_destroy(stream);
+        return NULL;
+    }
+    ms->data = data;
+    ms->size = size;
+    ms->offset = 0;
+
+    opj_stream_set_user_data(stream, ms, opj_free_memory_stream);
+    opj_stream_set_user_data_length(stream, size);
+    opj_stream_set_read_function(stream, opj_read_from_memory);
+    opj_stream_set_skip_function(stream, opj_skip_from_memory);
+    opj_stream_set_seek_function(stream, opj_seek_from_memory);
+
+    return stream;
+}
+
 
 typedef struct decode_info
 {
@@ -200,8 +274,8 @@ void* OPJSupport::decompressJPEG2KWithBuffer(void* inputBuffer,
     opj_set_default_decoder_parameters(&parameters);
     parameters.decod_format = buffer_format(jp2Data);
     
-    // Create buffer stream
-    decodeInfo.stream = opj_stream_create_buffer_stream((OPJ_BYTE *)jp2Data, (OPJ_SIZE_T) jp2DataSize , false, OPJ_STREAM_READ);
+    // Create buffer stream (OpenJPEG 2.3 compatible)
+    decodeInfo.stream = opj_stream_create_memory_stream((OPJ_BYTE *)jp2Data, (OPJ_SIZE_T) jp2DataSize);
     
     
     if (!decodeInfo.stream)
@@ -1056,4 +1130,3 @@ OPJSupport::compressJPEG2K(void *data,
     }
     return to;
 }
-

@@ -43,6 +43,7 @@ args+=(-DBUILD_DOCUMENTATION=OFF)
 args+=(-DBUILD_EXAMPLES=OFF)
 args+=(-DBUILD_SHARED_LIBS=OFF)
 args+=(-DBUILD_TESTING=OFF)
+args+=(-DCMAKE_POLICY_VERSION_MINIMUM=3.5)
 args+=(-DCMAKE_OSX_DEPLOYMENT_TARGET="$MACOSX_DEPLOYMENT_TARGET")
 args+=(-DCMAKE_OSX_ARCHITECTURES="$ARCHS")
 
@@ -79,13 +80,29 @@ if [ ! -z "$CLANG_CXX_LIBRARY" ] && [ "$CLANG_CXX_LIBRARY" != 'compiler-default'
 fi
 if [ ! -z "$CLANG_CXX_LANGUAGE_STANDARD" ]; then
 #    args+=(-DCMAKE_XCODE_ATTRIBUTE_CLANG_CXX_LANGUAGE_STANDARD="$CLANG_CXX_LANGUAGE_STANDARD")
-    cxxfs+=(-std="$CLANG_CXX_LANGUAGE_STANDARD")
+    cxxstd="$CLANG_CXX_LANGUAGE_STANDARD"
+    if [ "$cxxstd" = "c++0x" ]; then
+        cxxstd="c++11"
+    fi
+    cxxfs+=(-std="$cxxstd")
 fi
+
+# Remove any lingering -std=c++0x from toolchain defaults
+for i in "${!cxxfs[@]}"; do
+    if [ "${cxxfs[$i]}" = "-std=c++0x" ]; then
+        unset 'cxxfs[$i]'
+    fi
+done
+cxxfs+=( -std=c++11 )
 
 if [ ${#cxxfs[@]} -ne 0 ]; then
     cxxfss="${cxxfs[@]}"
     args+=(-DCMAKE_CXX_FLAGS="$cxxfss")
 fi
+
+# Force a modern C++ standard for VTK/eigen compatibility
+args+=(-DCMAKE_CXX_STANDARD=11)
+args+=(-DCMAKE_CXX_STANDARD_REQUIRED=ON)
 
 cmake "${args[@]}"
 

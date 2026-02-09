@@ -44,7 +44,7 @@ args+=(-DDCMTK_ENABLE_MANPAGES=OFF)
 
 args+=(-DCMAKE_INSTALL_PREFIX="$install_dir")
 
-args+=(-DCMAKE_IGNORE_PATH="/opt/local/include;/opt/local/lib")
+args+=(-DCMAKE_IGNORE_PATH="/opt/local/include;/opt/local/lib;/opt/homebrew/include;/opt/homebrew/lib")
 
 export PKG_CONFIG_PATH="$CONFIGURATION_TEMP_DIR/OpenJPEG.build/Install/lib/pkgconfig"
 
@@ -66,6 +66,8 @@ if [ ${#cxxfs[@]} -ne 0 ]; then
 fi
 
 args+=(-DDCMTK_WITH_OPENSSL=ON)
+args+=(-DOPENSSL_ROOT_DIR="$CONFIGURATION_TEMP_DIR/OpenSSL.build/Install")
+args+=(-DOPENSSL_USE_STATIC_LIBS=ON)
 args+=(-DOPENSSL_CRYPTO_LIBRARY="$CONFIGURATION_TEMP_DIR/OpenSSL.build/Install/lib/libcrypto.a")
 args+=(-DOPENSSL_INCLUDE_DIR="$CONFIGURATION_TEMP_DIR/OpenSSL.build/Install/include")
 args+=(-DOPENSSL_SSL_LIBRARY="$CONFIGURATION_TEMP_DIR/OpenSSL.build/Install/lib/libssl.a")

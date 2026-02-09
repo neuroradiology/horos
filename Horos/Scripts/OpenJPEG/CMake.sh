@@ -51,6 +51,21 @@ args+=(-DBUILD_DOC=OFF)
 args+=(-DBUILD_SHARED_LIBS=OFF)
 args+=(-DBUILD_STATIC_LIBS=ON)
 args+=(-DBUILD_TESTING=OFF)
+args+=(-DBUILD_THIRDPARTY=ON)
+args+=(-DCMAKE_POLICY_VERSION_MINIMUM=3.5)
+
+args+=(-DCMAKE_PREFIX_PATH="/opt/homebrew")
+args+=(-DCMAKE_LIBRARY_PATH="/opt/homebrew/lib")
+args+=(-DCMAKE_INCLUDE_PATH="/opt/homebrew/include")
+
+# Prefer explicit TIFF paths if available (brew can install in opt prefix)
+if [ -f "/opt/homebrew/lib/libtiff.dylib" ]; then
+    args+=(-DTIFF_LIBRARY="/opt/homebrew/lib/libtiff.dylib")
+    args+=(-DTIFF_INCLUDE_DIR="/opt/homebrew/include")
+elif [ -f "/opt/homebrew/opt/libtiff/lib/libtiff.dylib" ]; then
+    args+=(-DTIFF_LIBRARY="/opt/homebrew/opt/libtiff/lib/libtiff.dylib")
+    args+=(-DTIFF_INCLUDE_DIR="/opt/homebrew/opt/libtiff/include")
+fi
 
 args+=(-DCMAKE_IGNORE_PATH="/opt/local/include;/opt/local/lib")
 
