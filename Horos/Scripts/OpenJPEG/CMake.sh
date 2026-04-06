@@ -1,9 +1,11 @@
 #!/bin/sh
 
+export PATH="$PATH:/opt/local/bin:/opt/local/sbin:/opt/homebrew/bin/"
+
 path="$( cd "$(dirname "${BASH_SOURCE[0]}")" && pwd )/$(basename "${BASH_SOURCE[0]}")"
 cd "$TARGET_NAME"; pwd
 
-env=$(env|sort|grep -v 'LLBUILD_TASK_ID=\|Apple_PubSub_Socket_Render=\|DISPLAY=\|SHLVL=\|SSH_AUTH_SOCK=\|SECURITYSESSIONID=')
+env=$(env|sort|grep -v 'LLBUILD_BUILD_ID=\|LLBUILD_LANE_ID=\|LLBUILD_TASK_ID=\|Apple_PubSub_Socket_Render=\|DISPLAY=\|SHLVL=\|SSH_AUTH_SOCK=\|SECURITYSESSIONID=')
 hash="$(git describe --always --tags --dirty) $(md5 -q "$path")-$(md5 -qs "$env")"
 
 set -e; set -o xtrace
@@ -15,6 +17,12 @@ install_dir="$TARGET_TEMP_DIR/Install"
 mkdir -p "$cmake_dir"; cd "$cmake_dir"
 if [ -e Makefile -a -f .cmakehash ] && [ "$(cat '.cmakehash')" = "$hash" ]; then
     exit 0
+fi
+
+if [ -e ".cmakeenv" ]; then
+    echo "Rebuilding.."
+    cat '.cmakeenv'
+    echo "$env"
 fi
 
 command -v cmake >/dev/null 2>&1 || { echo >&2 "error: building $TARGET_NAME requires CMake. Please install CMake. Aborting."; exit 1; }
@@ -43,6 +51,23 @@ args+=(-DBUILD_DOC=OFF)
 args+=(-DBUILD_SHARED_LIBS=OFF)
 args+=(-DBUILD_STATIC_LIBS=ON)
 args+=(-DBUILD_TESTING=OFF)
+args+=(-DBUILD_THIRDPARTY=ON)
+args+=(-DCMAKE_POLICY_VERSION_MINIMUM=3.5)
+
+args+=(-DCMAKE_PREFIX_PATH="/opt/homebrew")
+args+=(-DCMAKE_LIBRARY_PATH="/opt/homebrew/lib")
+args+=(-DCMAKE_INCLUDE_PATH="/opt/homebrew/include")
+
+# Prefer explicit TIFF paths if available (brew can install in opt prefix)
+if [ -f "/opt/homebrew/lib/libtiff.dylib" ]; then
+    args+=(-DTIFF_LIBRARY="/opt/homebrew/lib/libtiff.dylib")
+    args+=(-DTIFF_INCLUDE_DIR="/opt/homebrew/include")
+elif [ -f "/opt/homebrew/opt/libtiff/lib/libtiff.dylib" ]; then
+    args+=(-DTIFF_LIBRARY="/opt/homebrew/opt/libtiff/lib/libtiff.dylib")
+    args+=(-DTIFF_INCLUDE_DIR="/opt/homebrew/opt/libtiff/include")
+fi
+
+args+=(-DCMAKE_IGNORE_PATH="/opt/local/include;/opt/local/lib")
 
 if [ "$CONFIGURATION" = 'Debug' ]; then
     cxxfs+=( -g )
@@ -71,5 +96,6 @@ cd "$cmake_dir"
 cmake "${args[@]}"
 
 echo "$hash" > "$cmake_dir/.cmakehash"
+echo "$env" > "$cmake_dir/.cmakeenv"
 
 exit 0

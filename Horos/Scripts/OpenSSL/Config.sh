@@ -1,19 +1,30 @@
 #!/bin/sh
 
+export PATH="$PATH:/opt/local/bin:/opt/local/sbin:/opt/homebrew/bin/"
+
 path="$( cd "$(dirname "${BASH_SOURCE[0]}")" && pwd )/$(basename "${BASH_SOURCE[0]}")"
 cd "$TARGET_NAME"; pwd
 
-env=$(env|sort|grep -v 'LLBUILD_TASK_ID=\|Apple_PubSub_Socket_Render=\|DISPLAY=\|SHLVL=\|SSH_AUTH_SOCK=\|SECURITYSESSIONID=')
+env=$(env|sort|grep -v 'LLBUILD_BUILD_ID=\|LLBUILD_LANE_ID=\|LLBUILD_TASK_ID=\|Apple_PubSub_Socket_Render=\|DISPLAY=\|SHLVL=\|SSH_AUTH_SOCK=\|SECURITYSESSIONID=')
 hash="$(git describe --always --tags --dirty) $(md5 -q "$path")-$(md5 -qs "$env")"
 
-set -e; set -o xtrace
+set -e; set -o xtrace; set -o pipefail
 
 source_dir="$PROJECT_DIR/$TARGET_NAME"
 cmake_dir="$TARGET_TEMP_DIR/Config"
 install_dir="$TARGET_TEMP_DIR/Install"
 
 mkdir -p "$cmake_dir"; cd "$cmake_dir"
-[ -e "Makefile" -a -f .cmakehash ] && [ "$(cat '.cmakehash')" = "$hash" ] && exit 0
+if [ -e Makefile -a -f .cmakehash ] && [ "$(cat '.cmakehash')" = "$hash" ]; then
+    exit 0
+fi
+
+if [ -e ".cmakeenv" ]; then
+echo "Rebuilding.."
+cat '.cmakeenv'
+echo "$env"
+fi
+
 
 command -v pkg-config >/dev/null 2>&1 || { echo >&2 "error: building $TARGET_NAME requires pkg-config. Please install pkg-config. Aborting."; exit 1; }
 
@@ -23,25 +34,27 @@ rm -Rf "$cmake_dir.tmp" "$install_dir.tmp"
 mkdir -p "$cmake_dir"
 
 cd "$cmake_dir"
-rsync -a --delete "$source_dir/" .
+set +e
+rsync -a --delete "$source_dir/" . 2>&1 | tee "$cmake_dir/rsync.log"
+rsync_status=${PIPESTATUS[0]}
+set -e
+if [ $rsync_status -ne 0 ]; then
+    echo "OpenSSL rsync failed with exit code $rsync_status" >&2
+    exit $rsync_status
+fi
 
 export CC=clang
 export CXX=clang
+export PERL=/usr/bin/perl
 
-config_args=( --prefix="$TARGET_TEMP_DIR/Install" --openssldir="$TARGET_TEMP_DIR/Install" -w )
-configure_args=( --prefix="$TARGET_TEMP_DIR/Install" --openssldir="$TARGET_TEMP_DIR/Install" -w )
+configure_args=( --prefix="$TARGET_TEMP_DIR/Install" --openssldir="$TARGET_TEMP_DIR/Install" -w -mmacosx-version-min=$MACOSX_DEPLOYMENT_TARGET )
 #cfs=($OTHER_CFLAGS)
 #cxxfs=($OTHER_CPLUSPLUSFLAGS)
 
 #args+=(-DCMAKE_OSX_DEPLOYMENT_TARGET="$MACOSX_DEPLOYMENT_TARGET")
 #args+=(-DCMAKE_OSX_ARCHITECTURES="$ARCHS")
 
-if [ "$CONFIGURATION" = 'Debug' ]; then
-    config_args+=( -d )
-#    args+=('debug-darwin64-x86_64-cc')
-#else
-#    args+=('darwin64-x86_64-cc')
-fi
+# ./Configure performs configuration; ./config is redundant and can fail under xcodebuild.
 
 #cfs+=(-Wno-sometimes-uninitialized)
 #cxxfs+=(-Wno-sometimes-uninitialized)
@@ -64,14 +77,28 @@ fi
 #fi
 
 cd "$cmake_dir"
-./config "${config_args[@]}"
 
+# Use a single arch for OpenSSL Configure (ARCHS can be a list)
+arch="${ARCHS%% *}"
+if [ -z "$arch" ]; then
+    arch="$NATIVE_ARCH_ACTUAL"
+fi
+
+set +e
 if [ "$CONFIGURATION" = 'Debug' ]; then
-    ./Configure "${configure_args[@]}" darwin64-x86_64-cc
+    ./Configure "${configure_args[@]}" debug-darwin64-$arch-cc no-shared no-engine no-tests 2>&1 | tee "$cmake_dir/configure.log"
+    configure_status=${PIPESTATUS[0]}
 else
-    ./Configure "${configure_args[@]}" debug-darwin64-x86_64-cc
+    ./Configure "${configure_args[@]}" darwin64-$arch-cc no-shared no-engine no-tests 2>&1 | tee "$cmake_dir/configure.log"
+    configure_status=${PIPESTATUS[0]}
+fi
+set -e
+if [ $configure_status -ne 0 ]; then
+    echo "OpenSSL ./Configure failed with exit code $configure_status" >&2
+    exit $configure_status
 fi
 
 echo "$hash" > "$cmake_dir/.cmakehash"
+echo "$env" > "$cmake_dir/.cmakeenv"
 
 exit 0

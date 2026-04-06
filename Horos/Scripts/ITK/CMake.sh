@@ -1,9 +1,11 @@
 #!/bin/sh
 
+export PATH="$PATH:/opt/local/bin:/opt/local/sbin:/opt/homebrew/bin/"
+
 path="$( cd "$(dirname "${BASH_SOURCE[0]}")" && pwd )/$(basename "${BASH_SOURCE[0]}")"
 cd "$TARGET_NAME"; pwd
 
-env=$(env|sort|grep -v 'LLBUILD_TASK_ID=\|Apple_PubSub_Socket_Render=\|DISPLAY=\|SHLVL=\|SSH_AUTH_SOCK=\|SECURITYSESSIONID=')
+env=$(env|sort|grep -v 'LLBUILD_BUILD_ID=\|LLBUILD_LANE_ID=\|LLBUILD_TASK_ID=\|Apple_PubSub_Socket_Render=\|DISPLAY=\|SHLVL=\|SSH_AUTH_SOCK=\|SECURITYSESSIONID=')
 hash="$(git describe --always --tags --dirty) $(md5 -q "$path")-$(md5 -qs "$env")"
 
 set -e; set -o xtrace
@@ -15,6 +17,13 @@ mkdir -p "$cmake_dir"; cd "$cmake_dir"
 if [ -e Makefile -a -f .cmakehash ] && [ "$(cat '.cmakehash')" = "$hash" ]; then
     exit 0
 fi
+
+if [ -e ".cmakeenv" ]; then
+echo "Rebuilding.."
+cat '.cmakeenv'
+echo "$env"
+fi
+
 
 command -v cmake >/dev/null 2>&1 || { echo >&2 "error: building $TARGET_NAME requires CMake. Please install CMake. Aborting."; exit 1; }
 command -v pkg-config >/dev/null 2>&1 || { echo >&2 "error: building $TARGET_NAME requires pkg-config. Please install pkg-config. Aborting."; exit 1; }
@@ -32,6 +41,7 @@ args+=(-DBUILD_DOCUMENTATION=OFF)
 args+=(-DBUILD_EXAMPLES=OFF)
 args+=(-DBUILD_SHARED_LIBS=OFF)
 args+=(-DBUILD_TESTING=OFF)
+args+=(-DCMAKE_POLICY_VERSION_MINIMUM=3.5)
 args+=(-DCMAKE_OSX_DEPLOYMENT_TARGET="$MACOSX_DEPLOYMENT_TARGET")
 args+=(-DCMAKE_OSX_ARCHITECTURES="$ARCHS")
 
@@ -48,8 +58,11 @@ args+=(-DModule_ITKLevelSets=ON)
 args+=(-DCMAKE_INSTALL_PREFIX="$install_dir")
 args+=(-DITK_INSTALL_INCLUDE_DIR="include")
 
-args+=(-DITK_USE_SYSTEM_GDCM=ON)
-args+=(-DGDCM_DIR="$CONFIGURATION_TEMP_DIR/GDCM.build/CMake")
+#args+=(-DITK_USE_SYSTEM_GDCM=ON)
+#args+=(-DGDCM_DIR="$CONFIGURATION_TEMP_DIR/GDCM.build/CMake")
+
+args+=(-DCMAKE_IGNORE_PATH="/opt/local/include;/opt/local/lib")
+
 lfs+=(-L"$CONFIGURATION_TEMP_DIR/OpenJPEG.build/Install/lib")
 
 if [ ! -z "$CLANG_CXX_LIBRARY" ] && [ "$CLANG_CXX_LIBRARY" != 'compiler-default' ]; then
@@ -76,5 +89,6 @@ fi
 cmake "${args[@]}"
 
 echo "$hash" > "$cmake_dir/.cmakehash"
+echo "$env" > "$cmake_dir/.cmakeenv"
 
 exit 0

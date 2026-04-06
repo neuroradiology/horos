@@ -1783,8 +1783,6 @@ NSInteger studyCompare(ViewerController *v1, ViewerController *v2, void *context
 
 - (void)DrawNSStringGL:(NSString*)str :(GLuint)fontL :(long)x :(long)y align:(DCMViewTextAlign)align useStringTexture:(BOOL)stringTex;
 {
-    //    stringTex = YES;
-    
     if( stringTex)
     {
 #define STRCAPACITY 800
@@ -2962,25 +2960,6 @@ NSInteger studyCompare(ViewerController *v1, ViewerController *v2, void *context
         {
             int a = annotationType + 1;
             if( a > annotFull) a = 0;
-            
-            //			switch( a)
-            //			{
-            //				case annotNone:
-            //					[[AppController sharedAppController] growlTitle: NSLocalizedString( @"Annotations", nil) description: NSLocalizedString(@"Turn Off Annotations", nil) name:@"result"];
-            //				break;
-            //
-            //				case annotGraphics:
-            //					[[AppController sharedAppController] growlTitle: NSLocalizedString( @"Annotations", nil) description: NSLocalizedString(@"Switch to Graphic Only", nil) name:@"result"];
-            //				break;
-            //
-            //				case annotBase:
-            //					[[AppController sharedAppController] growlTitle: NSLocalizedString( @"Annotations", nil) description: NSLocalizedString(@"Switch to Full without names", nil) name:@"result"];
-            //				break;
-            //
-            //				case annotFull:
-            //					[[AppController sharedAppController] growlTitle: NSLocalizedString( @"Annotations", nil) description: NSLocalizedString(@"Switch to Full", nil) name:@"result"];
-            //				break;
-            //			}
             
             [[NSUserDefaults standardUserDefaults] setInteger: a forKey: @"ANNOTATIONS"];
             [DCMView setDefaults];
@@ -5065,9 +5044,9 @@ NSInteger studyCompare(ViewerController *v1, ViewerController *v2, void *context
             if( [self is2DViewer] == YES)
                 [[self windowController] propagateSettings];
             
-            [self setNeedsDisplay:YES];
+            //[self setNeedsDisplay:YES];
             
-            [self displayIfNeeded];
+            //[self displayIfNeeded];
         }
     }
 }
@@ -8323,7 +8302,7 @@ NSInteger studyCompare(ViewerController *v1, ViewerController *v2, void *context
                 enumerator = [annotations objectEnumerator];
             id annot;
             
-            BOOL useStringTexture;
+            BOOL useStringTexture = YES; // HOROS-535 setting to NO causes annotations to be MIA
             
             if([key hasPrefix:@"Lower"])
                 enumerator = [annotations reverseObjectEnumerator];
@@ -8343,17 +8322,13 @@ NSInteger studyCompare(ViewerController *v1, ViewerController *v2, void *context
                         if([[annot objectAtIndex:j] isEqualToString:@"Image Size"] && fullText)
                         {
                             [tempString appendFormat: NSLocalizedString( @"Image size: %ld x %ld", nil), (long) self.curDCM.pwidth, (long) self.curDCM.pheight];
-                            useStringTexture = YES;
                         }
                         else if([[annot objectAtIndex:j] isEqualToString:@"View Size"] && fullText)
                         {
                             [tempString appendFormat: NSLocalizedString( @"View size: %ld x %ld", nil), (long) size.size.width, (long) size.size.height];
-                            useStringTexture = YES;
                         }
                         else if([[annot objectAtIndex:j] isEqualToString:@"Mouse Position (px)"])
                         {
-                            useStringTexture = NO;
-                            
                             if( stringID.length == 0 || [stringID isEqualToString: @"previewDatabase"])
                             {
                                 //                                if(mouseXPos!=0 || mouseYPos!=0)
@@ -8397,12 +8372,10 @@ NSInteger studyCompare(ViewerController *v1, ViewerController *v2, void *context
                         else if([[annot objectAtIndex:j] isEqualToString:@"Zoom"] && fullText)
                         {
                             [tempString appendFormat: NSLocalizedString( @"Zoom: %0.0f%%", @"No special characters for this string, only ASCII characters."), (float) [self displayedScaleValue]*100.0];
-                            useStringTexture = NO;
                         }
                         else if([[annot objectAtIndex:j] isEqualToString:@"Rotation Angle"] && fullText)
                         {
                             [tempString appendFormat: NSLocalizedString( @" Angle: %0.0f", @"No special characters for this string, only ASCII characters."), (float) ((long) [self displayedRotation] % 360)];
-                            useStringTexture = NO;
                         }
                         else if([[annot objectAtIndex:j] isEqualToString:@"Image Position"] && fullText)
                         {
@@ -8470,13 +8443,9 @@ NSInteger studyCompare(ViewerController *v1, ViewerController *v2, void *context
                                 if( flippedData) [tempString appendFormat: NSLocalizedString( @"Im: %ld/%ld %@", @"No special characters for this string, only ASCII characters."), (long) [dcmPixList count] - curImage, (long) [dcmPixList count], orientationStack];
                                 else [tempString appendFormat: NSLocalizedString( @"Im: %ld/%ld %@", @"No special characters for this string, only ASCII characters."), (long) curImage+1, (long) [dcmPixList count], orientationStack];
                             }
-                            
-                            useStringTexture = NO;
                         }
                         else if([[annot objectAtIndex:j] isEqualToString:@"Mouse Position (mm)"])
                         {
-                            useStringTexture = NO;
-                            
                             if( stringID == nil)
                             {
                                 //								if( mouseXPos != 0 || mouseYPos != 0)
@@ -8517,8 +8486,6 @@ NSInteger studyCompare(ViewerController *v1, ViewerController *v2, void *context
                         }
                         else if([[annot objectAtIndex:j] isEqualToString:@"Window Level / Window Width"])
                         {
-                            useStringTexture = NO;
-                            
                             float lwl = self.curDCM.wl;
                             float lww = self.curDCM.ww;
                             
@@ -8562,12 +8529,9 @@ NSInteger studyCompare(ViewerController *v1, ViewerController *v2, void *context
                         {
                             if(!orientationDrawn) [self drawOrientation: size];
                             orientationDrawn = YES;
-                            useStringTexture = YES;
                         }
                         else if([[annot objectAtIndex:j] isEqualToString:@"Thickness / Location / Position"])
                         {
-                            useStringTexture = YES;
-                            
                             if( self.curDCM.sliceThickness != 0 && self.curDCM.sliceLocation != 0)
                             {
                                 if( self.curDCM.stack > 1)
@@ -8617,7 +8581,6 @@ NSInteger studyCompare(ViewerController *v1, ViewerController *v2, void *context
                         else if( fullText)
                         {
                             [tempString appendFormat:@" %@", [annot objectAtIndex:j]];
-                            useStringTexture = YES;
                         }
                     }
                     
@@ -8682,8 +8645,6 @@ NSInteger studyCompare(ViewerController *v1, ViewerController *v2, void *context
         if( fullText)
             [self DrawNSStringGL: @"Made In Horos" :fontList :xRaster :yRaster rightAlignment:YES useStringTexture:YES];
     }
-    
-   
 }
 
 - (void) drawTextualData:(NSRect) size :(long) annotations

@@ -36,12 +36,13 @@
  ============================================================================*/
 
 //diskutil erasevolume HFS+ "ramdisk" `hdiutil attach -nomount ram://1165430`
-
 #import "SystemConfiguration/SCDynamicStoreCopySpecific.h"
 #include <CoreFoundation/CoreFoundation.h>
 #include <ApplicationServices/ApplicationServices.h>
 
+#if defined(USEFEEDBACKREPORTER)
 #import <FeedbackReporter/FRFeedbackReporter.h>
+#endif
 
 #import "ToolbarPanel.h"
 #import "ThumbnailsListPanel.h"
@@ -687,49 +688,49 @@ void exceptionHandler(NSException *exception)
 + (BOOL)hasMacOSXSierra
 {
     NSOperatingSystemVersion v = [self.class operatingSystemVersion];
-    return (v.majorVersion >= 10 && v.minorVersion >= 12);
+    return (v.majorVersion > 10 || v.minorVersion >= 12);
 }
 
 +(BOOL) hasMacOSXElCapitan
 {
     NSOperatingSystemVersion v = [self.class operatingSystemVersion];
-    return (v.majorVersion >= 10 && v.minorVersion >= 11);
+    return (v.majorVersion > 10 || v.minorVersion >= 11);
 }
 
 +(BOOL) hasMacOSXYosemite
 {
     NSOperatingSystemVersion v = [self.class operatingSystemVersion];
-    return (v.majorVersion >= 10 && v.minorVersion >= 10);
+    return (v.majorVersion > 10 || v.minorVersion >= 10);
 }
 
 +(BOOL) hasMacOSXMaverick
 {
     NSOperatingSystemVersion v = [self.class operatingSystemVersion];
-    return (v.majorVersion >= 10 && v.minorVersion >= 9);
+    return (v.majorVersion > 10 || v.minorVersion >= 9);
 }
 
 +(BOOL) hasMacOSXMountainLion
 {
     NSOperatingSystemVersion v = [self.class operatingSystemVersion];
-    return (v.majorVersion >= 10 && v.minorVersion >= 8);
+    return (v.majorVersion > 10 || v.minorVersion >= 8);
 }
 
 +(BOOL) hasMacOSXLion
 {
     NSOperatingSystemVersion v = [self.class operatingSystemVersion];
-    return (v.majorVersion >= 10 && v.minorVersion >= 7);
+    return (v.majorVersion > 10 || v.minorVersion >= 7);
 }
 
 +(BOOL) hasMacOSXSnowLeopard
 {
     NSOperatingSystemVersion v = [self.class operatingSystemVersion];
-    return (v.majorVersion >= 10 && v.minorVersion >= 6);
+    return (v.majorVersion > 10 || v.minorVersion >= 6);
 }
 
 +(BOOL) hasMacOSXLeopard
 {
     NSOperatingSystemVersion v = [self.class operatingSystemVersion];
-    return (v.majorVersion >= 10 && v.minorVersion >= 5);
+    return (v.majorVersion > 10 || v.minorVersion >= 5);
 }
 
 + (void) createNoIndexDirectoryIfNecessary:(NSString*) path { // __deprecated
@@ -758,8 +759,7 @@ void exceptionHandler(NSException *exception)
 
     [AppController resetThumbnailsList];
     
-    [previousScreenParameters release];
-    previousScreenParameters = [screenParameters retain];
+    previousScreenParameters = screenParameters;
 }
 
 + (void) resetThumbnailsList
@@ -768,10 +768,7 @@ void exceptionHandler(NSException *exception)
 	
 	for( int i = 0; i < MAXSCREENS; i++)
     {
-		if( thumbnailsListPanel[ i])
-            [thumbnailsListPanel[ i] release];
-        
-        thumbnailsListPanel[ i] = nil;
+		thumbnailsListPanel[ i] = nil;
 	}
     
 	for( int i = 0; i < numberOfScreens; i++)
@@ -792,14 +789,14 @@ void exceptionHandler(NSException *exception)
 			
 			if( accumulateAnimations)
 			{
-				if( accumulateAnimationsArray == nil) accumulateAnimationsArray = [[NSMutableArray array] retain];
+				if( accumulateAnimationsArray == nil) accumulateAnimationsArray = [NSMutableArray array];
 				[accumulateAnimationsArray addObject: windowResize];
 			}
 			else
 			{
 				[OSIWindowController setDontEnterWindowDidChangeScreen: YES];
 				
-				NSViewAnimation * animation = [[[NSViewAnimation alloc]  initWithViewAnimations: [NSArray arrayWithObjects: windowResize, nil]] autorelease];
+				NSViewAnimation * animation = [[NSViewAnimation alloc] initWithViewAnimations: [NSArray arrayWithObjects: windowResize, nil]];
 				[animation setAnimationBlockingMode: NSAnimationBlocking];
 				[animation setDuration: 0.15];
 				[animation startAnimation];
@@ -929,8 +926,6 @@ void exceptionHandler(NSException *exception)
 
 + (void) DNSResolve:(id) o
 {
-	NSAutoreleasePool *p = [[NSAutoreleasePool alloc] init];
-	
 	NSLog( @"start DNSResolve");
 	
 	for( NSString *s in [[DefaultsOsiriX currentHost] names])
@@ -939,8 +934,6 @@ void exceptionHandler(NSException *exception)
 	}
 	
 	NSLog( @"end DNSResolve");
-	
-	[p release];
 }
 
 + (NSString*) printStackTrace: (NSException*) e
@@ -1033,9 +1026,12 @@ void exceptionHandler(NSException *exception)
         
 		NSString *pluginBundleVersion = nil;
 		if(versionString != NULL)
-			pluginBundleVersion = (NSString*)versionString;
+            pluginBundleVersion = (__bridge NSString*) versionString;
 		else
-			pluginBundleVersion = @"";		
+			pluginBundleVersion = @"";
+		
+		if (bundleInfoDict != NULL)
+			CFRelease(bundleInfoDict);
 		
 		for(NSDictionary *plug in [PluginManager pluginsList])
 		{
@@ -1093,7 +1089,7 @@ void exceptionHandler(NSException *exception)
 
 - (NSString *)computerName
 {
-	return [(id)SCDynamicStoreCopyComputerName(NULL, NULL) autorelease];
+    return (id)CFBridgingRelease(SCDynamicStoreCopyComputerName(NULL, NULL));
 }
 
 - (NSString*) privateIP
@@ -1172,8 +1168,6 @@ void exceptionHandler(NSException *exception)
 
 - (void) waitForPID: (NSNumber*) pidNumber
 {
-	NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
-	
 	int pid = [pidNumber intValue];
 	int rc, state;
 	BOOL threadStateChanged = NO;
@@ -1195,8 +1189,6 @@ void exceptionHandler(NSException *exception)
 		[NSThread sleepForTimeInterval: 0.1];
 	}
 	while( rc >= 0);
-	
-	[pool release];
 }
 
 
@@ -1240,7 +1232,6 @@ void exceptionHandler(NSException *exception)
 - (void) runPreferencesUpdateCheck:(NSTimer*) timer
 {
 	[updateTimer invalidate];
-	[updateTimer release];
 	updateTimer = nil;
 	
 	BOOL restartListener = NO;
@@ -1381,8 +1372,7 @@ void exceptionHandler(NSException *exception)
                 NSRunCriticalAlertPanel( NSLocalizedString( @"Unsupported", nil), NSLocalizedString( @"It is highly recommend to upgrade to MacOS 10.6 or higher to use the Horos Web Server.", nil), NSLocalizedString( @"OK", nil) , nil, nil);
         }
         
-        [previousDefaults release];
-        previousDefaults = [dictionaryRepresentation retain];
+        previousDefaults = dictionaryRepresentation;
         
         if (refreshDatabase)
         {
@@ -1443,7 +1433,7 @@ void exceptionHandler(NSException *exception)
                 if( [[defaultSettings valueForKey: @"compression"] intValue] == 0 ||
                    [[defaultSettings valueForKey: @"modality"] isEqualToString: NSLocalizedString( @"default", nil)] == NO)
                 {
-                    NSMutableDictionary *d = [[defaultSettings mutableCopy] autorelease];
+                    NSMutableDictionary *d = [defaultSettings mutableCopy];
                     
                     if( [[defaultSettings valueForKey: @"compression"] intValue] == 0) // same as default
                         [d setObject: @"1" forKey: @"compression"];
@@ -1451,7 +1441,7 @@ void exceptionHandler(NSException *exception)
                     if( [[defaultSettings valueForKey: @"modality"] isEqualToString: NSLocalizedString( @"default", nil)] == NO) // item 0 IS default
                         [d setObject: NSLocalizedString( @"default", nil) forKey: @"modality"];
                     
-                    NSMutableArray *a = [[[[NSUserDefaults standardUserDefaults] arrayForKey: @"CompressionSettings"] mutableCopy] autorelease];
+                    NSMutableArray *a = [[[NSUserDefaults standardUserDefaults] arrayForKey: @"CompressionSettings"] mutableCopy];
                     
                     [a replaceObjectAtIndex: 0 withObject: d];
                     
@@ -1465,7 +1455,7 @@ void exceptionHandler(NSException *exception)
                 if( [[defaultSettings valueForKey: @"compression"] intValue] == 0 ||
                    [[defaultSettings valueForKey: @"modality"] isEqualToString: NSLocalizedString( @"default", nil)] == NO)
                 {
-                    NSMutableDictionary *d = [[defaultSettings mutableCopy] autorelease];
+                    NSMutableDictionary *d = [defaultSettings mutableCopy];
                     
                     if( [[defaultSettings valueForKey: @"compression"] intValue] == 0) // same as default
                         [d setObject: @"1" forKey: @"compression"];
@@ -1473,7 +1463,7 @@ void exceptionHandler(NSException *exception)
                     if( [[defaultSettings valueForKey: @"modality"] isEqualToString: NSLocalizedString( @"default", nil)] == NO) // item 0 IS default
                         [d setObject: NSLocalizedString( @"default", nil) forKey: @"modality"];
                     
-                    NSMutableArray *a = [[[[NSUserDefaults standardUserDefaults] arrayForKey: @"CompressionSettingsLowRes"] mutableCopy] autorelease];
+                    NSMutableArray *a = [[[NSUserDefaults standardUserDefaults] arrayForKey: @"CompressionSettingsLowRes"] mutableCopy];
                     
                     [a replaceObjectAtIndex: 0 withObject: d];
                     
@@ -1525,12 +1515,11 @@ void exceptionHandler(NSException *exception)
 	if( updateTimer)
     {
 		[updateTimer invalidate];
-        [updateTimer release];
         updateTimer = nil;
 	
     }
     
-	updateTimer = [[NSTimer scheduledTimerWithTimeInterval: 0.5 target: self selector:@selector(runPreferencesUpdateCheck:) userInfo:nil repeats: NO] retain];
+	updateTimer = [NSTimer scheduledTimerWithTimeInterval: 0.5 target: self selector:@selector(runPreferencesUpdateCheck:) userInfo:nil repeats: NO];
 }
 
 - (void) testMenus
@@ -1864,7 +1853,7 @@ void exceptionHandler(NSException *exception)
         for( DicomImage *i in [study allWindowsStateSRSeries])
         {
             @try {
-                SRAnnotation *r = [[[SRAnnotation alloc] initWithContentsOfFile: [i completePathResolved]] autorelease];
+                SRAnnotation *r = [[SRAnnotation alloc] initWithContentsOfFile: [i completePathResolved]];
                 
                 NSArray *viewers = [NSPropertyListSerialization propertyListFromData: r.dataEncapsulated mutabilityOption: NSPropertyListImmutable format: nil errorDescription: nil];
                 
@@ -1883,7 +1872,7 @@ void exceptionHandler(NSException *exception)
                         }
                     }
                     
-                    NSMenuItem *mi = [[[NSMenuItem alloc] initWithTitle: name action: @selector( loadWindowsStateDICOMSR:) keyEquivalent:@""] autorelease];
+                    NSMenuItem *mi = [[NSMenuItem alloc] initWithTitle: name action: @selector( loadWindowsStateDICOMSR:) keyEquivalent:@""];
                     
                     [mi setRepresentedObject: [NSDictionary dictionaryWithObjectsAndKeys: study, @"study", viewers, @"windowsState", nil]];
                     [mi setTarget: self];
@@ -1933,7 +1922,7 @@ void exceptionHandler(NSException *exception)
     NSArray     *sortedKeys;
     
 	if( mainOpacityMenu == nil)
-		mainOpacityMenu = [[self opacityMenu] retain];
+		mainOpacityMenu = [self opacityMenu];
 	
 	if( [[NSUserDefaults standardUserDefaults] dictionaryForKey: @"OPACITY"] != previousOpacityKeys)
 	{
@@ -1962,7 +1951,7 @@ void exceptionHandler(NSException *exception)
     NSArray     *sortedKeys;
     
 	if( mainMenuWLWWMenu == nil)
-		mainMenuWLWWMenu = [[self wlwwMenu] retain];
+		mainMenuWLWWMenu = [self wlwwMenu];
 	
 	if( [[NSUserDefaults standardUserDefaults] dictionaryForKey:@"WLWW3"] != previousWLWWKeys)
 	{
@@ -1997,7 +1986,7 @@ void exceptionHandler(NSException *exception)
 	NSArray     *sortedKeys;
 	
 	if( mainMenuConvMenu == nil)
-		mainMenuConvMenu = [[self convMenu] retain];
+		mainMenuConvMenu = [self convMenu];
 	
 	if( [[NSUserDefaults standardUserDefaults] dictionaryForKey: @"Convolution"] != previousConvKeys)
 	{
@@ -2029,7 +2018,7 @@ void exceptionHandler(NSException *exception)
     NSArray     *sortedKeys;
     
 	if( mainMenuCLUTMenu == nil)
-        mainMenuCLUTMenu = [[self clutMenu] retain];
+        mainMenuCLUTMenu = [self clutMenu];
 
 	if( [[NSUserDefaults standardUserDefaults] dictionaryForKey: @"CLUT"] != previousCLUTKeys)
 	{
@@ -2147,7 +2136,6 @@ void exceptionHandler(NSException *exception)
 			// built in dcmtk serve testing
 			if (BUILTIN_DCMTK == YES)
 			{
-				[dcmtkQRSCP release];
 				dcmtkQRSCP = nil;
 			}
 			else
@@ -2163,7 +2151,6 @@ void exceptionHandler(NSException *exception)
                 while( [aTask isRunning]) [NSThread sleepForTimeInterval: 0.01];
 //				[aTask waitUntilExit];
 				[aTask interrupt];
-				[aTask release];
 				aTask = nil;
 			}
 			
@@ -2185,7 +2172,6 @@ void exceptionHandler(NSException *exception)
 		
 		if([[NSUserDefaults standardUserDefaults] boolForKey:@"STORESCPTLS"])
 		{
-			[dcmtkQRSCPTLS release];
 			dcmtkQRSCPTLS = nil;
 			
 			//make sure that there exist a receiver folder at @"folder" path
@@ -2209,7 +2195,6 @@ void exceptionHandler(NSException *exception)
 	}
 	
 	[BonjourDICOMService stop];
-	[BonjourDICOMService release];
 	BonjourDICOMService = nil;
 	
 	if ([[NSUserDefaults standardUserDefaults] boolForKey:@"publishDICOMBonjour"])
@@ -2230,7 +2215,7 @@ void exceptionHandler(NSException *exception)
 	
 	if ([[NSUserDefaults standardUserDefaults] boolForKey: @"hideListenerError"] == NO)
 	{
-		NSAlert* alert = [[NSAlert new] autorelease];
+		NSAlert* alert = [NSAlert new];
 		[alert setMessageText: NSLocalizedString( @"DICOM Listener Error", nil)];
 		[alert setInformativeText: [err stringByAppendingString: @"\r\rThis error message can be hidden by activating the Server Mode (see Listener Preferences)"]];
 		[alert addButtonWithTitle: NSLocalizedString(@"OK", nil)];
@@ -2245,7 +2230,6 @@ void exceptionHandler(NSException *exception)
 
 	#ifndef OSIRIX_LIGHT
 	[STORESCP lock];
-	NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
 	
     [NSThread currentThread].name = @"DICOM Store-SCP";
     
@@ -2276,7 +2260,6 @@ void exceptionHandler(NSException *exception)
 		N2LogExceptionWithStackTrace(e);
 	}
 	
-	[pool release];
 	[STORESCP unlock];
 	#endif
 	
@@ -2287,8 +2270,6 @@ void exceptionHandler(NSException *exception)
 {
 	// this method is always executed as a new thread detached from the NSthread command of RestartSTORESCP method
 #ifndef OSIRIX_LIGHT
-	NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
-	
     [NSThread currentThread].name = @"DICOM Store-SCP TLS";
     
 	if([[NSUserDefaults standardUserDefaults] boolForKey:@"STORESCPTLS"])
@@ -2317,9 +2298,7 @@ void exceptionHandler(NSException *exception)
 		}
 		
 		[STORESCPTLS unlock];
-	}	
-	
-	[pool release];
+	}
 #endif
 	return;
 }
@@ -2467,7 +2446,7 @@ void exceptionHandler(NSException *exception)
 						
 						if( succeeded == NO)
 						{
-							NSFetchRequest *dbRequest = [[[NSFetchRequest alloc] init] autorelease];
+							NSFetchRequest *dbRequest = [[NSFetchRequest alloc] init];
 							[dbRequest setEntity: [[[BrowserController currentBrowser] database] seriesEntity]];
 							[dbRequest setPredicate: [NSPredicate predicateWithFormat: @"seriesSOPClassUID == %@", sopclassuid]];
 							
@@ -2513,7 +2492,6 @@ void exceptionHandler(NSException *exception)
 							}
 							[wait end];
 							[wait close];
-							[wait autorelease];
 							
 							[context unlock];
 						}
@@ -2621,7 +2599,6 @@ static BOOL firstCall = YES;
 	[[NSRunLoop currentRunLoop] runUntilDate: [NSDate dateWithTimeIntervalSinceNow: 3]];
 	
 	[wait close];
-	[wait autorelease];
 	
 	unlink( "/tmp/kill_all_storescu");
 	
@@ -2641,7 +2618,6 @@ static BOOL firstCall = YES;
 //	[webServer release];
 //	webServer = nil;
 	
-	[XMLRPCServer release];
 	XMLRPCServer = nil;
 	
 	[self closeAllViewers: self];
@@ -2658,7 +2634,6 @@ static BOOL firstCall = YES;
 	[ROI saveDefaultSettings];
 	
 	[BonjourDICOMService stop];
-	[BonjourDICOMService release];
 	BonjourDICOMService = nil;
 
     quitting = YES;
@@ -2760,11 +2735,6 @@ static BOOL firstCall = YES;
 	#endif
 	
     [NSThread sleepForTimeInterval: 0.5];
-    
-	#ifndef OSIRIX_LIGHT
-	[[QueryController currentQueryController] release];
-	[[QueryController currentAutoQueryController] release];
-    #endif
 	
     NSTimeInterval t = [NSDate timeIntervalSinceReferenceDate];
     while ([[[ThreadsManager defaultManager] threads] count] && [NSDate timeIntervalSinceReferenceDate]-t < 10) { // give declared background threads 10 secs to cancel
@@ -2871,12 +2841,12 @@ static BOOL initialized = NO;
 				//		exit(0);
 				//	}
 				
-				if ([AppController hasMacOSXElCapitan] == NO)
+                if ([AppController hasMacOSXElCapitan] == NO)
 				{
 					NSRunCriticalAlertPanel(NSLocalizedString(@"macOS", nil), NSLocalizedString(@"This application requires macOS 10.11 or higher. Please upgrade your operating system.", nil), NSLocalizedString(@"Quit", nil), nil, nil);
 					exit(0);
 				}
-                
+
                 int processors;
                 int mib[2] = {CTL_HW, HW_NCPU};
                 size_t dataLen = sizeof(int); // 'num' is an 'int'
@@ -3093,7 +3063,7 @@ static BOOL initialized = NO;
                 
 				//Add Endoscopy LUT, WL/WW, shading to existing prefs
 				// Shading Preset
-				NSMutableArray *shadingArray = [[[[NSUserDefaults standardUserDefaults] objectForKey:@"shadingsPresets"] mutableCopy] autorelease];
+				NSMutableArray *shadingArray = [[[NSUserDefaults standardUserDefaults] objectForKey:@"shadingsPresets"] mutableCopy];
 				NSDictionary *shading;
 				BOOL exists = NO;
 				
@@ -3154,7 +3124,7 @@ static BOOL initialized = NO;
 				[[NSUserDefaults standardUserDefaults] setObject:shadingArray forKey:@"shadingsPresets"];
 				
 				// Endoscopy LUT
-				NSMutableDictionary *cluts = [[[[NSUserDefaults standardUserDefaults] objectForKey:@"CLUT"] mutableCopy] autorelease];
+				NSMutableDictionary *cluts = [[[NSUserDefaults standardUserDefaults] objectForKey:@"CLUT"] mutableCopy];
 				// fix bad CLUT in previous versions
 				NSDictionary *clut = [cluts objectForKey:@"Endoscopy"];
 				if (!clut || [[[clut objectForKey:@"Red"] objectAtIndex:0] intValue] != 240)
@@ -3189,7 +3159,7 @@ static BOOL initialized = NO;
 				}
 				
 				//ww/wl
-				NSMutableDictionary *wlwwValues = [[[[NSUserDefaults standardUserDefaults] objectForKey:@"WLWW3"] mutableCopy] autorelease];
+				NSMutableDictionary *wlwwValues = [[[NSUserDefaults standardUserDefaults] objectForKey:@"WLWW3"] mutableCopy];
 				NSDictionary *wwwl = [wlwwValues objectForKey:@"VR - Endoscopy"];
 				if (!wwwl)
                 {
@@ -3268,31 +3238,41 @@ static BOOL initialized = NO;
 }
 
 #pragma mark-
-#pragma mark growl
+#pragma mark notification
 
-- (void) growlTitle:(NSString*) title description:(NSString*) description name:(NSString*) name
+// For use with pre-macOS 10.14 notifications (reference NSUserNotificationCenterDelegate).
+//
+- (BOOL)userNotificationCenter:(NSUserNotificationCenter *)center shouldPresentNotification:(NSUserNotification *)notification{
+    return YES;
+}
+
+- (void) notificationTitle:(NSString*) title description:(NSString*) description name:(NSString*) name
 {
 #ifndef OSIRIX_LIGHT
 #ifndef MACAPPSTORE
-	if( [[NSUserDefaults standardUserDefaults] boolForKey: @"displayGrowlNotification"])
-	{
-        [GrowlApplicationBridge notifyWithTitle: title
-							description: description 
-							notificationName: name
-							iconData: nil
-							priority: 0
-							isSticky: NO
-							clickContext: nil];
+    if (@available(macOS 10.14, *))
+    {
+        UNMutableNotificationContent *notification = [[UNMutableNotificationContent alloc] init];
+        notification.title = title;
+        notification.body = description;
+        notification.categoryIdentifier = name;
+        notification.sound = [UNNotificationSound defaultSound];
+        
+        UNNotificationTrigger* trigger = nil; // deliver immediately
+        UNNotificationRequest *request = [UNNotificationRequest requestWithIdentifier: [[NSUUID UUID] UUIDString] content: notification trigger: trigger];
+        UNUserNotificationCenter *center = [UNUserNotificationCenter currentNotificationCenter];
+        [center addNotificationRequest:request withCompletionHandler:^(NSError * _Nullable error) {
+            if (error) {
+                NSLog(@"User Notification failed for title=[%@] description=[%@] error=[%@]", title, [description stringByReplacingOccurrencesOfString: @"\r" withString: @"\n"], error.localizedDescription);
+            }
+        }];
+    } else {
+        NSUserNotification *notification = [[NSUserNotification alloc] init];
+        [notification setTitle: title];
+        [notification setInformativeText: description];
+        [notification setSoundName: NSUserNotificationDefaultSoundName];
+        [[NSUserNotificationCenter defaultUserNotificationCenter] deliverNotification: notification];
     }
-    
-//    if( [[NSUserDefaults standardUserDefaults] boolForKey: @"displayMacOSUserNotification"] && [AppController hasMacOSXMountainLion]) Growl SDK 1.3 will automatically use MacOS User Notification, if Growl is not installed
-//    {
-//        NSUserNotification *notification = [[NSUserNotification alloc] init];
-//        [notification setTitle: title];
-//        [notification setInformativeText: description];
-//        [notification setSoundName: NSUserNotificationDefaultSoundName];
-//        [[NSUserNotificationCenter defaultUserNotificationCenter] scheduleNotification: notification];
-//    }
 #endif
 #endif
 }
@@ -3329,9 +3309,7 @@ static BOOL initialized = NO;
 		}
 	}
 	
-	[dcmtkQRSCP release];
 	dcmtkQRSCP = nil;
-	[dcmtkQRSCPTLS release];
 	dcmtkQRSCPTLS = nil;
 }
 
@@ -3396,17 +3374,28 @@ static BOOL initialized = NO;
             selector:@selector(switchHandler:)
             name:NSWorkspaceSessionDidResignActiveNotification
             object:nil];
-	
+    
+    // Will request authorization for notifications now even if not enabled in preferences as user may update
+    // preferences while running. NOTE: requirements for application to be able to get authorization are more
+    // stringent for later releases (e.g., properly signed, notarized).
+    //
+    if (@available(macOS 10.14, *)) {
+        UNUserNotificationCenter *center = [UNUserNotificationCenter currentNotificationCenter];
+        [center requestAuthorizationWithOptions:(UNAuthorizationOptionSound | UNAuthorizationOptionAlert)
+                              completionHandler:^(BOOL granted, NSError * _Nullable error) {
+            if (!error) {
+                NSLog(@"User Notification authorization request succeeded");
+            }
+            else {
+                NSLog(@"User Notification authorization request failed, error=[%@]", error.localizedDescription);
+            }
+        }];
+    } else {
+        [[NSUserNotificationCenter defaultUserNotificationCenter] setDelegate:self];
+    }
+    
 //	if ([[NSUserDefaultsController sharedUserDefaultsController] boolForKey: @"ActivityWindowVisibleFlag"])
-//		[[[ActivityWindowController defaultController] window] makeKeyAndOrderFront:self];	
-	
-//	#if !__LP64__
-//	[[[NSApplication sharedApplication] dockTile] setBadgeLabel: @"32-bit"];
-//	[[[NSApplication sharedApplication] dockTile] display];
-//	#else
-//	[[[NSApplication sharedApplication] dockTile] setBadgeLabel: @"64-bit"];
-//	[[[NSApplication sharedApplication] dockTile] display];
-//	#endif
+//		[[[ActivityWindowController defaultController] window] makeKeyAndOrderFront:self];
 
 //#ifdef WITH_IMPORTANT_NOTICE
 //	[AppController displayImportantNotice: self];
@@ -3414,7 +3403,7 @@ static BOOL initialized = NO;
     
 //	if( [[NSUserDefaults standardUserDefaults] integerForKey: @"TOOLKITPARSER4"] == 0 || [[NSUserDefaults standardUserDefaults] boolForKey:@"USEPAPYRUSDCMPIX4"] == NO)
 //	{
-//		[self growlTitle: NSLocalizedString( @"Warning!", nil) description: NSLocalizedString( @"DCM Framework is selected as the DICOM reader/parser. The performances of this toolkit are slower.", nil)  name:@"result"];
+//		[self notificationTitle: NSLocalizedString( @"Warning!", nil) description: NSLocalizedString( @"DCM Framework is selected as the DICOM reader/parser. The performances of this toolkit are slower.", nil)  name:@"result"];
 //        
 //        NSLog( @"********");
 //        NSLog( @"********");
@@ -3564,12 +3553,6 @@ static BOOL initialized = NO;
 
 	[self testMenus];
     
-    #ifndef OSIRIX_LIGHT
-    if( [[NSBundle bundleForClass:[self class]] pathForAuxiliaryExecutable:@"odt2pdf"] == nil)
-        N2LogStackTrace( @"\r****** path2odt2pdf == nil\r*****************************");
-    #endif
-    
-    
     [ROI loadDefaultSettings];
     
 #ifndef OSIRIX_LIGHT
@@ -3629,17 +3612,19 @@ static BOOL initialized = NO;
     if( [[NSUserDefaults standardUserDefaults] boolForKey: @"isQueryControllerVisible"])
     {
         if([QueryController currentQueryController] == nil)
-            [[QueryController alloc] initAutoQuery: NO];
+            (void)[[QueryController alloc] initAutoQuery: NO];
         
         [[QueryController currentQueryController] showWindow: self];
     }
 #endif
     
+#if defined(USEFEEDBACKREPORTER)
     //dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, 0), ^{
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(5.f * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
             [FRFeedbackReporter sharedReporter];
         });
     //});
+#endif
 }
 
 - (void) checkForOsirixMimeType
@@ -3701,8 +3686,8 @@ static BOOL initialized = NO;
                 if (CFGetTypeID(ioName) == CFStringGetTypeID() && CFStringCompare(ioName, CFSTR(kDisplayKey), kCFCompareCaseInsensitive) == kCFCompareEqualTo) {
                     const void *model = CFDictionaryGetValue(serviceDictionary, @kModelKey);
                     
-                    NSString *gpuName = [[[NSString alloc] initWithData:( NSData *)model
-                                                              encoding:NSASCIIStringEncoding] autorelease];
+                    NSString *gpuName = [[NSString alloc] initWithData:(__bridge NSData *)model
+                                                              encoding:NSASCIIStringEncoding];
                     
                     [GPUs addObject:gpuName];
                 }
@@ -3793,7 +3778,6 @@ static BOOL initialized = NO;
     }
     
 	[dcmView removeFromSuperview];
-	[dcmView release];
 	
 	// pix 2: interpolation
 	
@@ -3831,10 +3815,6 @@ static BOOL initialized = NO;
         }
     }
 	[dcmView removeFromSuperview];
-	[dcmView release];
-	
-	[win release];
-	[dcmPix release];
 	
 	
 	[[NSUserDefaults standardUserDefaults] setInteger: annotCopy forKey:@"ANNOTATIONS"];
@@ -3896,7 +3876,7 @@ static BOOL initialized = NO;
 //		[[NSFileManager defaultManager] createDirectoryAtPath: @"/tmp/" attributes: nil];
 	
     
-    NSMutableArray *dbArray = [[[[NSUserDefaults standardUserDefaults] arrayForKey: @"localDatabasePaths"] deepMutableCopy] autorelease];
+    NSMutableArray *dbArray = [[[NSUserDefaults standardUserDefaults] arrayForKey: @"localDatabasePaths"] deepMutableCopy];
     NSMutableArray *toBeRemoved = [NSMutableArray array];
     for( NSMutableDictionary *d in dbArray)
 	{
@@ -4004,30 +3984,6 @@ static BOOL initialized = NO;
 	}
 	#endif
 	
-//	#ifndef OSIRIX_LIGHT
-//	#ifndef MACAPPSTORE
-//	if( [[NSUserDefaults standardUserDefaults] boolForKey: @"displayGrowlNotification"])
-//	{
-//        // If Growl crashed before...
-//        NSString *GrowlCrashed = @"/tmp/OsiriXGrowlCrashed";
-//        
-//        if( [[NSFileManager defaultManager] fileExistsAtPath: GrowlCrashed])
-//        {
-//            [[NSUserDefaults standardUserDefaults] setBool: NO forKey: @"displayGrowlNotification"];
-//            [[NSFileManager defaultManager] removeItemAtPath: GrowlCrashed error: nil];
-//        }
-//        else 
-//        {
-//            [GrowlCrashed writeToFile: GrowlCrashed atomically: YES encoding: NSUTF8StringEncoding error: nil];
-//            
-//            [GrowlApplicationBridge setGrowlDelegate: self];
-//            
-//            [[NSFileManager defaultManager] removeItemAtPath: GrowlCrashed error: nil];
-//        }
-//	}
-//	#endif
-//	#endif
-	
 	NSNotificationCenter *nc = [NSNotificationCenter defaultCenter];
     [nc addObserver: self
            selector: @selector(UpdateWLWWMenu:)
@@ -4109,7 +4065,7 @@ static BOOL initialized = NO;
 	//Checks for Bonjour enabled dicom servers. Most likely other copies of Horos
 	[DCMNetServiceDelegate sharedNetServiceDelegate];
 	
-	previousDefaults = [[[NSUserDefaults standardUserDefaults] dictionaryRepresentation] retain];
+	previousDefaults = [[NSUserDefaults standardUserDefaults] dictionaryRepresentation];
 	showRestartNeeded = YES;
 		
 	[[NSNotificationCenter defaultCenter]	addObserver: self
@@ -4126,7 +4082,7 @@ static BOOL initialized = NO;
     [[NSUserDefaults standardUserDefaults] setBool: YES forKey: @"useDCMTKForJP2K"];
     
     if( [[[NSUserDefaults standardUserDefaults] objectForKey:@"HOTKEYS"] count] < SetKeyImageAction) {
-        NSMutableDictionary *d = [[[[NSUserDefaults standardUserDefaults] objectForKey:@"HOTKEYS"] mutableCopy] autorelease];
+        NSMutableDictionary *d = [[[NSUserDefaults standardUserDefaults] objectForKey:@"HOTKEYS"] mutableCopy];
         
         BOOL f = NO;
         for( NSString *key in d) {
@@ -4280,10 +4236,6 @@ static BOOL initialized = NO;
 
 - (void) displayUpdateMessage: (NSString*) msg
 {
-	[msg retain];
-	
-	NSAutoreleasePool   *pool = [[NSAutoreleasePool alloc] init];
-	
 	if( [msg isEqualToString:@"LISTENER"])
 	{
 		NSRunAlertPanel( NSLocalizedString( @"DICOM Listener Error", nil), NSLocalizedString( @"Horos listener cannot start. Is the Port valid? Is there another process using this Port?\r\rSee Listener - Preferences.", nil), NSLocalizedString( @"OK", nil), nil, nil);
@@ -4313,10 +4265,6 @@ static BOOL initialized = NO;
 		if (NSOKButton == button)
 			[[NSWorkspace sharedWorkspace] openURL:[NSURL URLWithString:URL_HOROS_UPDATE]];
 	}
-	
-	[pool release];
-	
-	[msg release];
 }
 
 - (id) splashScreen
@@ -4327,9 +4275,9 @@ static BOOL initialized = NO;
 	wait = [[[WaitRendering alloc] init: NSLocalizedString(@"Starting Horos Lite...", nil)] autorelease];
 	#else
 	if( sizeof( long) == 8)
-		wait = [[[WaitRendering alloc] init: NSLocalizedString(@"Starting Horos 64-bit", nil)] autorelease];
+		wait = [[WaitRendering alloc] init: NSLocalizedString(@"Starting Horos 64-bit", nil)];
 	else
-		wait = [[[WaitRendering alloc] init: NSLocalizedString(@"Starting Horos 32-bit", nil)] autorelease];
+		wait = [[WaitRendering alloc] init: NSLocalizedString(@"Starting Horos 32-bit", nil)];
 	#endif
 
 	return wait;
@@ -4340,8 +4288,6 @@ static BOOL initialized = NO;
 
 - (IBAction) checkForUpdatesDisabled: (id) sender
 {
-    NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
-    
     if ([[NSUserDefaults standardUserDefaults] boolForKey: @"CheckHorosUpdates"] != NO)
     {
         dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^(void){
@@ -4360,15 +4306,11 @@ static BOOL initialized = NO;
             });
         });
     }
-    
-    [pool release];
 }
 
 - (IBAction) checkForUpdates: (id) sender
 {
 	NSURL *url;
-	NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
-	
 	if( sender != self)
         verboseUpdateCheck = YES;
 	else
@@ -4418,7 +4360,6 @@ static BOOL initialized = NO;
 	
     if (verboseUpdateCheck)
     {
-        [pool release];
         return;
     }
 
@@ -4442,8 +4383,6 @@ static BOOL initialized = NO;
             });
         });
     }
-    
-    [pool release];
 }
 #endif
 #endif
@@ -4459,15 +4398,7 @@ static BOOL initialized = NO;
 
 - (IBAction) about: (id) sender
 {
-/*
-    if (!splashController)
-    {
-        splashController = [[SplashScreen alloc] init];
-    }
-*/
-	if (splashController)
-		[splashController release];
-	splashController = [[SplashScreen alloc] init];
+    splashController = [[SplashScreen alloc] init];
 	[splashController showWindow:self];
 	[splashController affiche];
 }
@@ -4484,18 +4415,8 @@ static BOOL initialized = NO;
 {
     [[NSNotificationCenter defaultCenter] removeObserver: self];
 	
-    [browserController release];
-	[dcmtkQRSCP release];
 	dcmtkQRSCP = nil;
-	
-	[dcmtkQRSCPTLS release];
 	dcmtkQRSCPTLS = nil;
-	
-//	#ifndef OSIRIX_LIGHT
-//	[IChatTheatreDelegate releaseSharedDelegate];
-//	#endif
-	
-    [super dealloc];
 }
 
 //———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
@@ -4544,15 +4465,15 @@ static BOOL initialized = NO;
 
 - (NSArray*)viewerScreens
 {
-	NSMutableArray* screens = [[[[NSUserDefaults standardUserDefaults] screensUsedForViewers] mutableCopy] autorelease];
+	NSMutableArray* screens = [[[NSUserDefaults standardUserDefaults] screensUsedForViewers] mutableCopy];
     if (!screens.count)
-        screens = [[[NSScreen screens] mutableCopy] autorelease];
+        screens = [[NSScreen screens] mutableCopy];
 	
     if ([[NSUserDefaults standardUserDefaults] boolForKey:@"ReserveScreenForDB"] && [screens containsObject:[dbWindow screen]] && [screens count] > 1)
         [screens removeObjectIdenticalTo:[dbWindow screen]];
     
     if (!screens.count)
-        screens = [[[NSScreen screens] mutableCopy] autorelease];
+        screens = [[NSScreen screens] mutableCopy];
     
 	// arrange them left to right
     [screens sortUsingComparator:^NSComparisonResult(id o1, id o2) {
@@ -4811,9 +4732,9 @@ static BOOL initialized = NO;
             if( study.modality.length)
                 [components addObject: study.modality];
             
-            NSAttributedString *title = [[[NSAttributedString alloc] initWithString: [components componentsJoinedByString:@" / "] attributes: [NSDictionary dictionaryWithObject: [NSFont boldSystemFontOfSize: 14] forKey: NSFontAttributeName]] autorelease];
+            NSAttributedString *title = [[NSAttributedString alloc] initWithString: [components componentsJoinedByString:@" / "] attributes: [NSDictionary dictionaryWithObject: [NSFont boldSystemFontOfSize: 14] forKey: NSFontAttributeName]];
             
-            NSMenuItem *menuItem = [[[NSMenuItem alloc] initWithTitle: title.string action: @selector( loadRecentStudy:) keyEquivalent: @""] autorelease];
+            NSMenuItem *menuItem = [[NSMenuItem alloc] initWithTitle: title.string action: @selector( loadRecentStudy:) keyEquivalent: @""];
             
             [menuItem setAttributedTitle: title];
             [menuItem setTarget: self];
@@ -5021,7 +4942,7 @@ static BOOL initialized = NO;
 		if( [[[cWindows objectAtIndex: i] window] isVisible] == NO) [cWindows removeObjectAtIndex: i];
 	}
 	
-	NSMutableArray* screens = [[[self viewerScreens] mutableCopy] autorelease];
+	NSMutableArray* screens = [[self viewerScreens] mutableCopy];
     
     if (viewersList.count < screens.count && [[NSUserDefaults standardUserDefaults] boolForKey: @"UseDBScreenAtLast"])
     {
@@ -5030,7 +4951,7 @@ static BOOL initialized = NO;
     }
     
     if( screens.count <= 0)
-        screens = [[[self viewerScreens] mutableCopy] autorelease];
+        screens = [[self viewerScreens] mutableCopy];
     
     int numberOfMonitors = [screens count];
 
@@ -5570,7 +5491,7 @@ static BOOL initialized = NO;
 		[OSIWindowController setDontEnterMagneticFunctions: YES];
 		[OSIWindowController setDontEnterWindowDidChangeScreen: YES];
 		
-		NSViewAnimation * animation = [[[NSViewAnimation alloc]  initWithViewAnimations: accumulateAnimationsArray] autorelease];
+		NSViewAnimation * animation = [[NSViewAnimation alloc]  initWithViewAnimations: accumulateAnimationsArray];
 		[animation setAnimationBlockingMode: NSAnimationBlocking];
 		
 		if( [accumulateAnimationsArray count] == 1)
@@ -5579,7 +5500,6 @@ static BOOL initialized = NO;
 			[animation setDuration: 0.40];
 		[animation startAnimation];
 		
-		[accumulateAnimationsArray release];
 		accumulateAnimationsArray = nil;
 		
 		[OSIWindowController setDontEnterMagneticFunctions: NO];
@@ -5687,8 +5607,7 @@ static BOOL initialized = NO;
 
 + (void)set12BitInvocation:(NSInvocation*)invocation;
 {
-	[fill12BitBufferInvocation release];
-	fill12BitBufferInvocation = [invocation retain];
+	fill12BitBufferInvocation = invocation;
 }
 
 + (NSInvocation*)fill12BitBufferInvocation;
@@ -5714,8 +5633,8 @@ static BOOL initialized = NO;
     if( fakeContext == nil)
     {
         fakeContext  = [[NSManagedObjectContext alloc] init];
-        NSManagedObjectModel *model = [[[NSManagedObjectModel alloc] initWithContentsOfURL: [NSURL fileURLWithPath: [[[NSBundle mainBundle] resourcePath] stringByAppendingPathComponent:@"/WebPortalDB.momd"]]] autorelease];
-        NSPersistentStoreCoordinator *psc = [[[NSPersistentStoreCoordinator alloc] initWithManagedObjectModel: model] autorelease];
+        NSManagedObjectModel *model = [[NSManagedObjectModel alloc] initWithContentsOfURL: [NSURL fileURLWithPath: [[[NSBundle mainBundle] resourcePath] stringByAppendingPathComponent:@"/WebPortalDB.momd"]]];
+        NSPersistentStoreCoordinator *psc = [[NSPersistentStoreCoordinator alloc] initWithManagedObjectModel: model];
         [fakeContext setPersistentStoreCoordinator: psc];
     }
     return fakeContext;
@@ -5751,7 +5670,7 @@ static NSMutableDictionary* _receivingDict = nil;
 			_receivingDict = [[NSMutableDictionary alloc] init];
 		
 		NSThread* thread = [NSThread currentThread];
-		NSValue* threadValue = [NSValue valueWithPointer:thread];
+        NSValue* threadValue = [NSValue valueWithPointer:CFBridgingRetain(thread)];
 		N2MutableUInteger* setCount = [_receivingDict objectForKey:threadValue];
 		
 		if (flag) {
@@ -5792,7 +5711,7 @@ static NSMutableDictionary* _receivingDict = nil;
 }
 
 - (void)sound:(NSSound*)sound didFinishPlaying:(BOOL)finishedPlaying {
-    [sound release];
+    sound = nil;
 }
 
 
@@ -5815,18 +5734,15 @@ static NSMutableDictionary* _receivingDict = nil;
 {
     NSLog(@"Unicode test: مرحبا - 你好 - שלום");
     
+#if defined(USEFEEDBACKREPORTER)
     [[FRFeedbackReporter sharedReporter] setDelegate:(id<FRFeedbackReporterDelegate>) self];
-    
-    //[[FRFeedbackReporter sharedReporter] reportFeedback];
-    //return;
-    
+
     if ([[FRFeedbackReporter sharedReporter] reportIfCrash] == YES)
     {
         NSLog(@"Crash found.");
         return YES;
     }
-    
-    //[self crash];
+#endif
     
     return NO;
 }

@@ -126,7 +126,9 @@
 #import "ToolBarNSWindow.h"
 #import "RemoteDicomDatabase.h"
 
+#if defined(USEHOMEPHONE)
 #import "homephone/HorosHomePhone.h"
+#endif
 
 int delayedTileWindows = NO;
 
@@ -7777,7 +7779,9 @@ static ViewerController *draggedController = nil;
     
     [ViewerController clearFrontMost2DViewerCache];
     
+#if defined(USEHOMEPHONE)
     [[HorosHomePhone sharedHomePhone] callHomeInformingFunctionType:HOME_PHONE_2D_VIEWER_LAUNCHED detail:@"{}"];
+#endif
 }
 
 -(void)comparativeRefresh:(NSString*) patientUID
@@ -9405,8 +9409,10 @@ static int avoidReentryRefreshDatabase = 0;
     
     [PluginManager startProtectForCrashWithFilter: filter];
     
+#if defined(USEHOMEPHONE)
     [[HorosHomePhone sharedHomePhone] callHomeInformingFunctionType:HOME_PHONE_PLUGIN_LAUNCHED detail:[NSString stringWithFormat:@"{\"PluginName\": \"%@\"}",name]];
-    
+#endif
+
     NSLog( @"executeFilter");
     
     @try
@@ -12914,38 +12920,44 @@ static float oldsetww, oldsetwl;
         case 10:	// Copy ROIs
         {
             WaitRendering *splash = [[WaitRendering alloc] init: NSLocalizedString( @"Copy ROIs between series...", nil)];
-            [splash showWindow:self];
-            
-            int i, x, curIndex = [[bc imageView] curImage];
-            NSArray	*bcRoiList = nil;
-            
-            for( x = 0; x < [[bc pixList] count]; x++)
-            {
-                [[bc imageView] setIndex: x];
-                [[bc imageView] sendSyncMessage: 0];
-                [bc adjustSlider];
-                
-                if( bcRoiList != [[bc roiList] objectAtIndex: [[bc imageView] curImage]])
-                {
-                    bcRoiList = [[bc roiList] objectAtIndex: [[bc imageView] curImage]];
-                    
-                    for( i = 0; i < [[[bc roiList] objectAtIndex: x] count]; i++)
-                    {
-                        ROI *curROI = [[[bc roiList] objectAtIndex: x] objectAtIndex:i];
-                        
-                        curROI = [[curROI copy] autorelease];
-                        
-                        [curROI setOriginAndSpacing:[[imageView curDCM] pixelSpacingX] :[[imageView curDCM] pixelSpacingY] :[DCMPix originCorrectedAccordingToOrientation: [imageView curDCM]]];	//NSMakePoint( [[imageView curDCM] originX], [[imageView curDCM] originY])];
-                        [imageView roiSet: curROI];
-                        
-                        [[roiList[curMovieIndex] objectAtIndex: [imageView curImage]] addObject: curROI];
-                    }
-                }
-            }
-            
-            [[bc imageView] setIndex: curIndex];
-            [[bc imageView] sendSyncMessage: 0];
-            [bc adjustSlider];
+			[splash showWindow:self];
+			
+			int curIndex = [imageView curImage];
+			int bcCurIndex = [[bc imageView] curImage];
+			
+			NSUInteger count = MIN([[self pixList] count], [[bc pixList] count]);
+			for( int x = 0; x < count; x++)
+			{
+				[imageView setIndex:x];
+				[imageView sendSyncMessage: 0];
+				[self adjustSlider];
+				
+				[[bc imageView] setIndex:x];
+				[[bc imageView] sendSyncMessage:0];
+				[bc adjustSlider];
+				
+				NSArray	*bcRoiList = [[bc roiList] objectAtIndex: [[bc imageView] curImage]];
+				
+				for( i = 0; i < [bcRoiList count]; i++)
+				{
+					ROI *curROI = [bcRoiList objectAtIndex:i];
+					
+					curROI = [[curROI copy] autorelease];
+					
+					[curROI setOriginAndSpacing:[[imageView curDCM] pixelSpacingX] :[[imageView curDCM] pixelSpacingY] :[DCMPix originCorrectedAccordingToOrientation: [imageView curDCM]]];
+					[imageView roiSet: curROI];
+					
+					[[roiList[curMovieIndex] objectAtIndex: [imageView curImage]] addObject: curROI];
+				}
+			}
+			
+			[imageView setIndex:curIndex];
+			[imageView sendSyncMessage: 0];
+			[self adjustSlider];
+			
+			[[bc imageView] setIndex:bcCurIndex];
+			[[bc imageView] sendSyncMessage:0];
+			[bc adjustSlider];
             
             [splash close];
             [splash autorelease];
@@ -12953,7 +12965,7 @@ static float oldsetww, oldsetwl;
             break;
             
         default:
-            NSRunCriticalAlertPanel(NSLocalizedString(@"OsiriX Light",nil), NSLocalizedString(@"This function is not available in OsiriX Light. Download the complete version of OsiriX to solve this issue.",nil) , NSLocalizedString(@"OK",nil), nil, nil);
+            NSLog(@"Ignoring request for unsupported blendingType: %d", blendingType);
             break;
     }
 }
@@ -21069,8 +21081,10 @@ static float oldsetww, oldsetwl;
 #ifndef OSIRIX_LIGHT
 - (VRController *)openVRViewerForMode:(NSString *)mode
 {
+#if defined(USEHOMEPHONE)
     [[HorosHomePhone sharedHomePhone] callHomeInformingFunctionType:HOME_PHONE_3DVOL_LAUNCHED detail:[NSString stringWithFormat:@"{\"Mode\": \"%@\"}",mode]];
-    
+#endif
+
     long i;
     
     [self checkEverythingLoaded];
@@ -21244,8 +21258,10 @@ static float oldsetww, oldsetwl;
 
 - (SRController *)openSRViewer
 {
+#if defined(USEHOMEPHONE)
     [[HorosHomePhone sharedHomePhone] callHomeInformingFunctionType:HOME_PHONE_3DSUR_LAUNCHED detail:@"{}"];
-    
+#endif
+
     SRController *viewer;
     [self checkEverythingLoaded];
     [self clear8bitRepresentations];
@@ -21303,8 +21319,10 @@ static float oldsetww, oldsetwl;
 
 - (OrthogonalMPRViewer *)openOrthogonalMPRViewer
 {
+#if defined(USEHOMEPHONE)
     [[HorosHomePhone sharedHomePhone] callHomeInformingFunctionType:HOME_PHONE_2DMPR_LAUNCHED detail:@"{}"];
-    
+#endif
+
     OrthogonalMPRViewer *viewer;
     [self checkEverythingLoaded];
     [self clear8bitRepresentations];
@@ -21353,8 +21371,10 @@ static float oldsetww, oldsetwl;
 #ifndef OSIRIX_LIGHT
 - (OrthogonalMPRPETCTViewer *)openOrthogonalMPRPETCTViewer
 {
+#if defined(USEHOMEPHONE)
     [[HorosHomePhone sharedHomePhone] callHomeInformingFunctionType:HOME_PHONE_2DMPR_LAUNCHED detail:@"{}"];
-    
+#endif
+
     OrthogonalMPRPETCTViewer  *viewer;
     [self checkEverythingLoaded];
     [self clear8bitRepresentations];
@@ -21491,8 +21511,10 @@ static float oldsetww, oldsetwl;
 #ifndef OSIRIX_LIGHT
 - (EndoscopyViewer *)openEndoscopyViewer
 {
+#if defined(USEHOMEPHONE)
     [[HorosHomePhone sharedHomePhone] callHomeInformingFunctionType:HOME_PHONE_3DEND_LAUNCHED detail:@"{}"];
-    
+#endif
+
     [self checkEverythingLoaded];
     [self clear8bitRepresentations];
     EndoscopyViewer *viewer;
@@ -21594,8 +21616,10 @@ static float oldsetww, oldsetwl;
 #ifndef OSIRIX_LIGHT
 - (MPRController *)openMPRViewer
 {
+#if defined(USEHOMEPHONE)
     [[HorosHomePhone sharedHomePhone] callHomeInformingFunctionType:HOME_PHONE_3DMPR_LAUNCHED detail:@"{}"];
-    
+#endif
+
     [self checkEverythingLoaded];
     [self clear8bitRepresentations];
     
@@ -21669,8 +21693,10 @@ static float oldsetww, oldsetwl;
 /** Action to open the CPRViewer */
 - (CPRController *)openCPRViewer
 {
+#if defined(USEHOMEPHONE)
     [[HorosHomePhone sharedHomePhone] callHomeInformingFunctionType:HOME_PHONE_3DCPR_LAUNCHED detail:@"{}"];
-    
+#endif
+
     [self checkEverythingLoaded];
     [self clear8bitRepresentations];
     
@@ -22456,8 +22482,7 @@ static float oldsetww, oldsetwl;
     {
         [ViewerController closeAllWindows];
     }
-    else
-        [[BrowserController currentBrowser] showDatabase:self];
+    [[BrowserController currentBrowser] showDatabase:self];
 }
 
 - (void)setStandardRect:(NSRect)rect

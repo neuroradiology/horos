@@ -72,8 +72,8 @@
 
 #import "url.h"
 
-#define uint64 tiff_uint64
-#import <vtk_tiff.h>
+//#define uint64 tiff_uint64
+//#import <vtk_tiff.h>
 
 #ifndef OSIRIX_LIGHT
 #include "FVTiff.h"
@@ -5634,8 +5634,8 @@ void erase_outside_circle(char *buf, int width, int height, int cx, int cy, int 
     if( shutterRect.size.height == 0) shutterRect.size.height = height;
     
     //window level & width
-    if ([dcmObject attributeValueWithName:@"WindowCenter"] && isRGB == NO) savedWL = (int)[[dcmObject attributeValueWithName:@"WindowCenter"] floatValue];
-    if ([dcmObject attributeValueWithName:@"WindowWidth"] && isRGB == NO) savedWW =  (int) [[dcmObject attributeValueWithName:@"WindowWidth"] floatValue];
+    if ([dcmObject attributeValueWithName:@"WindowCenter"] && isRGB == NO) savedWL = (float)[[dcmObject attributeValueWithName:@"WindowCenter"] floatValue];
+    if ([dcmObject attributeValueWithName:@"WindowWidth"] && isRGB == NO) savedWW =  (float) [[dcmObject attributeValueWithName:@"WindowWidth"] floatValue];
     if(  savedWW < 0) savedWW =-savedWW;
     
     if( [[dcmObject attributeValueWithName:@"RescaleType"] isEqualToString: @"US"] == NO)
@@ -7000,161 +7000,95 @@ void erase_outside_circle(char *buf, int width, int height, int cx, int cy, int 
     {
         @try
         {
-            CGImageRef cgRef = [otherImage CGImageForProposedRect:NULL context:nil hints:nil];
-            NSBitmapImageRep *r = [[[NSBitmapImageRep alloc] initWithCGImage:cgRef] autorelease];
-            [r setSize: otherImage.size];
-            
-            NSBitmapImageRep *TIFFRep = [NSBitmapImageRep imageRepWithData: [r TIFFRepresentation]];
-            
-            if( TIFFRep)
-            {
-                height = TIFFRep.pixelsHigh;
-                width = TIFFRep.pixelsWide;
-                
+            if (otherImage == nil)
+                return;
+
+            NSRect rect = NSMakeRect(0, 0, otherImage.size.width, otherImage.size.height);
+            CGImageRef cgRef = [otherImage CGImageForProposedRect:&rect context:nil hints:nil];
+            if (cgRef == NULL)
+                return;
+
+            size_t w = CGImageGetWidth(cgRef);
+            size_t h = CGImageGetHeight(cgRef);
+
+            if (w == 0 || h == 0)
+                return;
+
+            width  = (int) w;
+            height = (int) h;
+
 #ifdef OSIRIX_VIEWER
-                NSManagedObjectContext *iContext = nil;
-                
-                if( savedHeightInDB != 0 && savedHeightInDB != height)
-                {
-                    if( savedHeightInDB != OsirixDicomImageSizeUnknown)
-                        NSLog( @"******* [[imageObj valueForKey:@'height'] intValue] != height. New: %d / DB: %d", (int)height, (int)savedHeightInDB);
-                    
-                    if( iContext == nil)
-                        iContext = ([[NSThread currentThread] isMainThread] ? [[[BrowserController currentBrowser] database] managedObjectContext] : [[[BrowserController currentBrowser] database] independentContext]);
-                    
-                    [[iContext existingObjectWithID: imageObjectID error: nil] setValue: [NSNumber numberWithInt: height] forKey: @"height"];
-                }
-                
-                if( height > savedHeightInDB && fExternalOwnedImage)
-                    height = savedHeightInDB;
-                
-                if( savedWidthInDB != 0 && savedWidthInDB != width)
-                {
-                    if( savedWidthInDB != OsirixDicomImageSizeUnknown)
-                        NSLog( @"******* [[imageObj valueForKey:@'width'] intValue] != width. New: %d / DB: %d", (int)width, (int)savedWidthInDB);
-                    
-                    if( iContext == nil)
-                        iContext = ([[NSThread currentThread] isMainThread] ? [[[BrowserController currentBrowser] database] managedObjectContext] : [[[BrowserController currentBrowser] database] independentContext]);
-                    
-                    [[iContext existingObjectWithID: imageObjectID error: nil] setValue: [NSNumber numberWithInt: width] forKey: @"width"];
-                }
-                
-                if( width > savedWidthInDB && fExternalOwnedImage)
-                    width = savedWidthInDB;
-                
-                [iContext save: nil];
-#endif
-                unsigned char *srcImage = [TIFFRep bitmapData];
-                
-                unsigned char *argbImage = nil, *srcPtr = nil, *tmpPtr = nil;
-                
-                int totSize = (int)(height * width * 4);
-                if( fExternalOwnedImage)
-                    argbImage =	(unsigned char*) fExternalOwnedImage;
-                else
-                    argbImage = malloc( totSize);
-                
-                if( srcImage != nil && argbImage != nil)
-                {
-                    int x, y;
-                    
-                    switch( [TIFFRep bitsPerPixel])
-                    {
-                        case 8:
-                            tmpPtr = argbImage;
-                            for( y = 0 ; y < height; y++)
-                            {
-                                srcPtr = srcImage + y*[TIFFRep bytesPerRow];
-                                
-                                x = (int)width;
-                                while( x-->0)
-                                {
-                                    tmpPtr++;
-                                    *tmpPtr++ = *srcPtr;
-                                    *tmpPtr++ = *srcPtr;
-                                    *tmpPtr++ = *srcPtr;
-                                    srcPtr++;
-                                }
-                            }
-                            break;
-                            
-                        case 32:
-                            tmpPtr = argbImage;
-                            for( y = 0 ; y < height; y++)
-                            {
-                                srcPtr = srcImage + y*[TIFFRep bytesPerRow];
-                                
-                                x = (int)width;
-                                while( x-->0)
-                                {
-                                    unsigned char alpha = srcPtr[ 3];
-                                    
-                                    if( alpha != 255) // -> white background
-                                    {
-                                        *tmpPtr++ = 255;
-                                        *tmpPtr++ = (255 - alpha) + (alpha * *srcPtr++ / 255);
-                                        *tmpPtr++ = (255 - alpha) + (alpha * *srcPtr++ / 255);
-                                        *tmpPtr++ = (255 - alpha) + (alpha * *srcPtr++ / 255);
-                                        srcPtr++;
-                                    }
-                                    else
-                                    {
-                                        *tmpPtr++ = 255;
-                                        *tmpPtr++ = *srcPtr++;
-                                        *tmpPtr++ = *srcPtr++;
-                                        *tmpPtr++ = *srcPtr++;
-                                        srcPtr++;
-                                    }
-                                }
-                            }
-                            break;
-                            
-                        case 24:
-                            tmpPtr = argbImage;
-                            for( y = 0 ; y < height; y++)
-                            {
-                                srcPtr = srcImage + y*[TIFFRep bytesPerRow];
-                                
-                                x = (int)width;
-                                while( x-->0)
-                                {
-                                    tmpPtr++;
-                                    
-                                    *((short*)tmpPtr) = *((short*)srcPtr);
-                                    tmpPtr+=2;
-                                    srcPtr+=2;
-                                    
-                                    *tmpPtr++ = *srcPtr++;
-                                }
-                            }
-                            break;
-                            
-                        case 48:
-                            tmpPtr = argbImage;
-                            for( y = 0 ; y < height; y++)
-                            {
-                                srcPtr = srcImage + y*[TIFFRep bytesPerRow];
-                                
-                                x = (int)width;
-                                while( x-->0)
-                                {
-                                    tmpPtr++;
-                                    *tmpPtr++ = *srcPtr;	srcPtr += 2;
-                                    *tmpPtr++ = *srcPtr;	srcPtr += 2;
-                                    *tmpPtr++ = *srcPtr;	srcPtr += 2;
-                                }
-                            }
-                            break;
-                            
-                        default:
-                            NSLog(@"Error - Unknow bitsPerPixel ...");
-                            break;
-                    }
-                    
-                    fImage = (float*) argbImage;
-                    isRGB = YES;
-                }
+            NSManagedObjectContext *iContext = nil;
+
+            if (savedHeightInDB != 0 && savedHeightInDB != height)
+            {
+                if (savedHeightInDB != OsirixDicomImageSizeUnknown)
+                    NSLog( @"******* [[imageObj valueForKey:@'height'] intValue] != height. New: %d / DB: %d", (int)height, (int)savedHeightInDB);
+
+                if (iContext == nil)
+                    iContext = ([[NSThread currentThread] isMainThread] ? [[[BrowserController currentBrowser] database] managedObjectContext] : [[[BrowserController currentBrowser] database] independentContext]);
+
+                [[iContext existingObjectWithID: imageObjectID error: nil] setValue: [NSNumber numberWithInt: height] forKey: @"height"];
             }
+
+            if (height > savedHeightInDB && fExternalOwnedImage)
+                height = savedHeightInDB;
+
+            if (savedWidthInDB != 0 && savedWidthInDB != width)
+            {
+                if (savedWidthInDB != OsirixDicomImageSizeUnknown)
+                    NSLog( @"******* [[imageObj valueForKey:@'width'] intValue] != width. New: %d / DB: %d", (int)width, (int)savedWidthInDB);
+
+                if (iContext == nil)
+                    iContext = ([[NSThread currentThread] isMainThread] ? [[[BrowserController currentBrowser] database] managedObjectContext] : [[[BrowserController currentBrowser] database] independentContext]);
+
+                [[iContext existingObjectWithID: imageObjectID error: nil] setValue: [NSNumber numberWithInt: width] forKey: @"width"];
+            }
+
+            if (width > savedWidthInDB && fExternalOwnedImage)
+                width = savedWidthInDB;
+
+            [iContext save: nil];
+#endif
+
+            size_t bytesPerRow = width * 4;
+            size_t totalSize   = bytesPerRow * height;
+
+            unsigned char *argbImage = NULL;
+
+            if (fExternalOwnedImage)
+                argbImage = (unsigned char*) fExternalOwnedImage;
+            else
+                argbImage = (unsigned char*) malloc(totalSize);
+
+            if (!argbImage)
+                return;
+
+            CGColorSpaceRef cs = CGColorSpaceCreateDeviceRGB();
+
+            CGContextRef ctx = CGBitmapContextCreate(argbImage,
+                                                     width,
+                                                     height,
+                                                     8,
+                                                     bytesPerRow,
+                                                     cs,
+                                                     kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Big);
+
+            CGColorSpaceRelease(cs);
+
+            if (ctx == NULL)
+            {
+                if (!fExternalOwnedImage)
+                    free(argbImage);
+                return;
+            }
+
+            CGContextSetBlendMode(ctx, kCGBlendModeCopy);
+            CGContextDrawImage(ctx, CGRectMake(0, 0, width, height), cgRef);
+            CGContextRelease(ctx);
+
+            fImage = (float*) argbImage;
+            isRGB = YES;
         }
         @catch (NSException* e)
         {
@@ -7162,6 +7096,7 @@ void erase_outside_circle(char *buf, int width, int height, int cx, int cy, int 
         }
     }
 }
+
 
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 - (void) CheckLoadIn
@@ -9745,8 +9680,13 @@ void erase_outside_circle(char *buf, int width, int height, int cx, int cy, int 
                 fNext = [[pixArray objectAtIndex: next] fImage];
                 if( fNext)
                 {
+#if __arm64__
+                    if( stackMode == 2) vmax8ARM( (vUInt8*) fNext, (vUInt8*) fImage, (vUInt8*) fResult, height * width);
+                    else vmin8ARM( (vUInt8*) fNext, (vUInt8*) fImage, (vUInt8*) fResult, height * width);
+#else
                     if( stackMode == 2) vmax8Intel( (vUInt8*) fNext, (vUInt8*) fImage, (vUInt8*) fResult, height * width);
                     else vmin8Intel( (vUInt8*) fNext, (vUInt8*) fImage, (vUInt8*) fResult, height * width);
+#endif
                 }
                 
                 for( long i = 2; i < stack; i++)
@@ -9766,8 +9706,13 @@ void erase_outside_circle(char *buf, int width, int height, int cx, int cy, int 
                             fNext = [[pixArray objectAtIndex: res] fImage];
                             if( fNext)
                             {
+#if __arm64__
+                                if( stackMode == 2) vmax8ARM( (vUInt8*) fNext, (vUInt8*) fImage, (vUInt8*) fResult, height * width);
+                                else vmin8ARM( (vUInt8*) fNext, (vUInt8*) fImage, (vUInt8*) fResult, height * width);
+#else
                                 if( stackMode == 2) vmax8Intel( (vUInt8*) fResult, (vUInt8*) fNext, (vUInt8*) fResult, height * width);
                                 else vmin8Intel( (vUInt8*) fResult, (vUInt8*) fNext, (vUInt8*) fResult, height * width);
+#endif
                             }
                         }
                     }

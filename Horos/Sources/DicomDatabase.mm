@@ -99,7 +99,7 @@ NSString* const CurrentDatabaseVersion = @"2.5";
 @implementation DicomDatabase
 
 +(void)initializeDicomDatabaseClass {
-    [NSUserDefaultsController.sharedUserDefaultsController addObserver:self forValuesKey:OsirixCanActivateDefaultDatabaseOnlyDefaultsKey options:NSKeyValueObservingOptionInitial context:[DicomDatabase class]];
+    [NSUserDefaultsController.sharedUserDefaultsController addObserver:(id)self forValuesKey:OsirixCanActivateDefaultDatabaseOnlyDefaultsKey options:NSKeyValueObservingOptionInitial context:[DicomDatabase class]];
 }
 
 +(void)observeValueForKeyPath:(NSString*)keyPath ofObject:(id)object change:(NSDictionary*)change context:(void*)context {
@@ -2535,8 +2535,8 @@ static BOOL protectionAgainstReentry = NO;
     {
         thread.progress = -1;
         
-        NSString* growlString = nil;
-        NSString* growlStringNewStudy = nil;
+        NSString* notificationString = nil;
+        NSString* notificationStringNewStudy = nil;
         
         @try
         {
@@ -2570,8 +2570,8 @@ static BOOL protectionAgainstReentry = NO;
             {
                 if ([addedImageObjects count] > 0 && generatedByOsiriX == NO)
                 {
-                    growlString = [NSString stringWithFormat:NSLocalizedString(@"Patient: %@\r%@ to the database", nil), [[addedImageObjects objectAtIndex:0] valueForKeyPath:@"series.study.name"], N2LocalizedSingularPluralCount(addedImageObjects.count, NSLocalizedString(@"image added", nil), NSLocalizedString(@"images added", nil))];
-                    growlStringNewStudy = [NSString stringWithFormat:NSLocalizedString(@"%@\r%@", nil), [[addedImageObjects objectAtIndex:0] valueForKeyPath:@"series.study.name"], [[addedImageObjects objectAtIndex:0] valueForKeyPath:@"series.study.studyName"]];
+                    notificationString = [NSString stringWithFormat:NSLocalizedString(@"Patient: %@\r%@ to the database", nil), [[addedImageObjects objectAtIndex:0] valueForKeyPath:@"series.study.name"], N2LocalizedSingularPluralCount(addedImageObjects.count, NSLocalizedString(@"image added", nil), NSLocalizedString(@"images added", nil))];
+                    notificationStringNewStudy = [NSString stringWithFormat:NSLocalizedString(@"%@\r%@", nil), [[addedImageObjects objectAtIndex:0] valueForKeyPath:@"series.study.name"], [[addedImageObjects objectAtIndex:0] valueForKeyPath:@"series.study.studyName"]];
                 }
             }
             if (self.isLocal && returnArray && [[NSUserDefaults standardUserDefaults] boolForKey: @"AUTOROUTINGACTIVATED"] && [self allowAutoroutingWithPostNotifications:postNotifications rereadExistingItems:rereadExistingItems])
@@ -2585,11 +2585,11 @@ static BOOL protectionAgainstReentry = NO;
         self.timeOfLastModification = [NSDate timeIntervalSinceReferenceDate];
         if (postNotifications)
         {
-            if (growlString)
-                [self performSelectorOnMainThread:@selector(_growlImagesAdded:) withObject:growlString waitUntilDone:NO];
+            if (notificationString)
+                [self performSelectorOnMainThread:@selector(_notificationImagesAdded:) withObject:notificationString waitUntilDone:NO];
             
-            if (newStudy && growlStringNewStudy)
-                [self performSelectorOnMainThread:@selector(_growlNewStudy:) withObject:growlStringNewStudy waitUntilDone:NO];
+            if (newStudy && notificationStringNewStudy)
+                [self performSelectorOnMainThread:@selector(_notificationNewStudy:) withObject:notificationStringNewStudy waitUntilDone:NO];
         }
     }
     @catch (NSException* e)
@@ -2848,12 +2848,12 @@ static BOOL protectionAgainstReentry = NO;
 }
 
 
--(void)_growlImagesAdded:(NSString*)message {
-    [AppController.sharedAppController growlTitle:NSLocalizedString(@"Incoming Files", nil) description:message name:@"newfiles"];
+-(void)_notificationImagesAdded:(NSString*)message {
+    [AppController.sharedAppController notificationTitle:NSLocalizedString(@"Incoming Files", nil) description:message name:@"newfiles"];
 }
 
--(void)_growlNewStudy:(NSString*)message {
-    [AppController.sharedAppController growlTitle:NSLocalizedString(@"New Study", nil) description:message name:@"newstudy"];
+-(void)_notificationNewStudy:(NSString*)message {
+    [AppController.sharedAppController notificationTitle:NSLocalizedString(@"New Study", nil) description:message name:@"newstudy"];
 }
 
 -(BOOL) hasFilesToImport
@@ -3414,10 +3414,13 @@ static BOOL protectionAgainstReentry = NO;
         {
             NSString *newBadge = (importCount? [[NSNumber numberWithInteger:importCount] stringValue] : nil);
             
-            if( [newBadge isEqualToString: [[NSApp dockTile] badgeLabel]] == NO)
-                [AppController.sharedAppController performSelectorOnMainThread:@selector(setBadgeLabel:) withObject: newBadge waitUntilDone:NO];
+            dispatch_async(dispatch_get_main_queue(), ^(void)
+            {
+                if( [newBadge isEqualToString: [[NSApp dockTile] badgeLabel]] == NO)
+                    [AppController.sharedAppController setBadgeLabel:newBadge];
+                   
+            });
         }
-        
     }
     @catch (NSException* e)
     {
@@ -3447,7 +3450,7 @@ static BOOL protectionAgainstReentry = NO;
     {
         if ([self isFileSystemFreeSizeLimitReached]) {
             [NSFileManager.defaultManager removeItemAtPath:[self incomingDirPath] error:nil]; // Kill the incoming directory
-            [[AppController sharedAppController] growlTitle:NSLocalizedString(@"Warning", nil) description: NSLocalizedString(@"The database volume is full! Incoming files are ignored.", nil) name:@"newfiles"];
+            [[AppController sharedAppController] notificationTitle:NSLocalizedString(@"Warning", nil) description: NSLocalizedString(@"The database volume is full! Incoming files are ignored.", nil) name:@"newfiles"];
         }
         
         @try {

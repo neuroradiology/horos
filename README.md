@@ -2,12 +2,13 @@
 
 ### Prerequisites
 
-1. `cmake` and `pkg-config` must be in the system's `PATH`.
-2. Patience and coffee. A full build takes about 30-45 minutes.
+1. `cmake` and `pkg-config` must be in the system's `PATH` or installed at `/opt/local/bin` (Intel) or `/opt/homebrew/bin` (Apple Silicon).
+3. `git-lfs` must be in the installed (for VTK-m) (https://git-lfs.github.com/) 
+4. Patience or a fast Mac, a full build takes from 5 minutes to 30 minutes.
 
 ### Build
 
-1. Clone the repository: `git clone https://github.com/horosproject/horos.git`
+1. Clone the repository: `git clone https://github.com/frnext/horos.git`
 
 ### Option 1 (GUI)
 

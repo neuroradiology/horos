@@ -37,7 +37,11 @@
 
 #import "options.h"
 
+#if !__LP64__ && !__arm64__
 #define USE3DCONNEXION 1
+#else
+#define USE3DCONNEXION 0
+#endif
 
 #import "VRView.h"
 
@@ -3017,7 +3021,7 @@ public:
     long	pix[ 3];
     float	pos[ 3], value;
     
-    NSPoint mouseLocStart = [self convertPoint: [theEvent locationInWindow] fromView: nil];
+    NSPoint mouseLocStart = [self convertPointToBacking: [theEvent locationInWindow]];
     
     if( isViewportResizable)
     {
@@ -3213,7 +3217,7 @@ public:
     }
     else
     {
-        NSPoint mouseLoc = [self convertPoint: [theEvent locationInWindow] fromView:nil];
+        NSPoint mouseLoc = [self convertPointToBacking: [theEvent locationInWindow]];
         float WWAdapter, endlevel, startlevel;
         int shiftDown;
         int controlDown;
@@ -3549,7 +3553,7 @@ public:
     
     _hasChanged = YES;
     [drawLock lock];
-    NSPoint mouseLoc = [self convertPoint: [theEvent locationInWindow] fromView:nil];
+    NSPoint mouseLoc = [self convertPointToBacking: [theEvent locationInWindow]];
     float distance ;
     
     if (([theEvent deltaX] != 0 || [theEvent deltaY] != 0))
@@ -3811,7 +3815,7 @@ public:
             _mouseDownTimer = [[NSTimer scheduledTimerWithTimeInterval:1.0 target:self selector:@selector(startDrag:) userInfo:theEvent  repeats:NO] retain];
     }
     
-    mouseLocPre = _mouseLocStart = [self convertPoint: [theEvent locationInWindow] fromView: nil];
+    mouseLocPre = _mouseLocStart = [self convertPointToBacking: [theEvent locationInWindow]];
     
     int clickCount = 1;
     
@@ -3910,7 +3914,7 @@ public:
             
             // Click point 3D to 2D
             
-            _mouseLocStart = [self convertPoint: [theEvent locationInWindow] fromView: nil];
+            _mouseLocStart = [self convertPointToBacking: [theEvent locationInWindow]];
             
             aRenderer->SetDisplayPoint( _mouseLocStart.x, _mouseLocStart.y, 0);
             aRenderer->DisplayToWorld();
@@ -3969,7 +3973,7 @@ public:
             dontRenderVolumeRenderingOsiriX = 1;
             
             // Click point 3D to 2D
-            _mouseLocStart = [self convertPoint: [theEvent locationInWindow] fromView: nil];
+            _mouseLocStart = [self convertPointToBacking: [theEvent locationInWindow]];
             
             aRenderer->SetDisplayPoint( _mouseLocStart.x, _mouseLocStart.y, 0);
             aRenderer->DisplayToWorld();
@@ -4005,7 +4009,7 @@ public:
             
             // Click point 3D to 2D
             
-            _mouseLocStart = [self convertPoint: [theEvent locationInWindow] fromView: nil];
+            _mouseLocStart = [self convertPointToBacking: [theEvent locationInWindow]];
             
             aRenderer->SetDisplayPoint( _mouseLocStart.x, _mouseLocStart.y, 0);
             aRenderer->DisplayToWorld();
@@ -4038,7 +4042,7 @@ public:
             _startMin = wl - ww/2;
             _startMax = wl + ww/2;
             
-            _mouseLocStart = [self convertPoint: [theEvent locationInWindow] fromView:nil];
+            _mouseLocStart = [self convertPointToBacking: [theEvent locationInWindow]];
             
             if( volumeMapper)
                 volumeMapper->SetMinimumImageSampleDistance( LOD*lowResLODFactor);
@@ -4053,7 +4057,7 @@ public:
             _startMin = blendingWl - blendingWw/2;
             _startMax = blendingWl + blendingWw/2;
             
-            _mouseLocStart = [self convertPoint: [theEvent locationInWindow] fromView:nil];
+            _mouseLocStart = [self convertPointToBacking: [theEvent locationInWindow]];
             
             if( volumeMapper)
                 volumeMapper->SetMinimumImageSampleDistance( LOD*lowResLODFactor);
@@ -4072,7 +4076,7 @@ public:
             if( blendingVolumeMapper)
                 blendingVolumeMapper->SetMinimumImageSampleDistance( LOD*lowResLODFactor);
             
-            mouseLoc = _mouseLocStart = [self convertPoint: [theEvent locationInWindow] fromView:nil];
+            mouseLoc = _mouseLocStart = [self convertPointToBacking: [theEvent locationInWindow]];
             [self getInteractor]->SetEventInformation((int) mouseLoc.x, (int) mouseLoc.y, controlDown, shiftDown);
             [self getInteractor]->InvokeEvent(vtkCommand::LeftButtonPressEvent,NULL);
         }
@@ -4080,7 +4084,7 @@ public:
         {
             if( _tool == tCamera3D || clipRangeActivated == YES)
             {
-                mouseLocPre = _mouseLocStart = [self convertPoint: [theEvent locationInWindow] fromView:nil];
+                mouseLocPre = _mouseLocStart = [self convertPointToBacking: [theEvent locationInWindow]];
                 
                 if( volumeMapper) volumeMapper->SetMinimumImageSampleDistance( LOD*lowResLODFactor);
                 if( blendingVolumeMapper) blendingVolumeMapper->SetMinimumImageSampleDistance( LOD*lowResLODFactor);
@@ -4116,7 +4120,7 @@ public:
                 if( blendingVolumeMapper)
                     blendingVolumeMapper->SetMinimumImageSampleDistance( LOD*lowResLODFactor);
                 
-                mouseLoc = [self convertPoint: [theEvent locationInWindow] fromView:nil];
+                mouseLoc = [self convertPointToBacking: [theEvent locationInWindow]];
                 
                 [self getInteractor]->SetEventInformation((int)mouseLoc.x, (int)mouseLoc.y, controlDown, shiftDown);
                 [self getInteractor]->InvokeEvent(vtkCommand::LeftButtonPressEvent,NULL);
@@ -4138,7 +4142,7 @@ public:
             if( blendingVolumeMapper)
                 blendingVolumeMapper->SetMinimumImageSampleDistance( LOD*lowResLODFactor);
             
-            mouseLoc = [self convertPoint: [theEvent locationInWindow] fromView:nil];
+            mouseLoc = [self convertPointToBacking: [theEvent locationInWindow]];
             [self getInteractor]->SetEventInformation((int)mouseLoc.x, (int)mouseLoc.y, controlDown, shiftDown);
             [self getInteractor]->InvokeEvent(vtkCommand::LeftButtonPressEvent,NULL);
         }
@@ -4155,14 +4159,14 @@ public:
                 int shiftDown = 0;
                 int controlDown = 1;
                 
-                mouseLoc = [self convertPoint: [theEvent locationInWindow] fromView:nil];
+                mouseLoc = [self convertPointToBacking: [theEvent locationInWindow]];
                 [self getInteractor]->SetEventInformation((int) mouseLoc.x, (int) mouseLoc.y, controlDown, shiftDown);
                 [self getInteractor]->InvokeEvent(vtkCommand::RightButtonPressEvent,NULL);
             }
             else
             {
                 // vtkCamera
-                mouseLocPre = _mouseLocStart = [self convertPoint: [theEvent locationInWindow] fromView:nil];
+                mouseLocPre = _mouseLocStart = [self convertPointToBacking: [theEvent locationInWindow]];
                 
                 if( volumeMapper) volumeMapper->SetMinimumImageSampleDistance( LOD*lowResLODFactor);
                 if( blendingVolumeMapper) blendingVolumeMapper->SetMinimumImageSampleDistance( LOD*lowResLODFactor);
@@ -4236,7 +4240,7 @@ public:
             NSLog( @"**** Undo");
             
             // clicked point (2D coordinate)
-            _mouseLocStart = [self convertPoint: [theEvent locationInWindow] fromView: nil];
+            _mouseLocStart = [self convertPointToBacking: [theEvent locationInWindow]];
             
             long pix[ 3];
             float pos[ 3], value;
@@ -5109,7 +5113,7 @@ public:
     {
         if( aCamera->GetParallelProjection() == NO && flyto == NO)
         {
-            NSPoint mousePoint = [self convertPoint: [[self window] mouseLocationOutsideOfEventStream] fromView: nil];
+            NSPoint mousePoint = [self convertPointToBacking: [[self window] mouseLocationOutsideOfEventStream]];
             long	pix[ 3];
             float	value;
             
@@ -5140,7 +5144,7 @@ public:
         NSLog( @"360 degree rotation - 100 images - END");
         NSLog( @"360 degree rotation - Result in [s]: %f", -[now timeIntervalSinceNow]);
         
-        [[AppController sharedAppController] growlTitle: NSLocalizedString( @"Performance Test", nil) description: [NSString stringWithFormat: NSLocalizedString(@"360 degree rotation - 100 images\rResult in [s] : %f", nil), -[now timeIntervalSinceNow]] name:@"result"];
+        [[AppController sharedAppController] notificationTitle: NSLocalizedString( @"Performance Test", nil) description: [NSString stringWithFormat: NSLocalizedString(@"360 degree rotation - 100 images\rResult in [s] : %f", nil), -[now timeIntervalSinceNow]] name:@"result"];
     }
     else if( c == 27 && currentTool == t3DCut)
     {
@@ -6307,7 +6311,7 @@ public:
             unsigned long memory = [VTKView VRAMSizeForDisplayID: [[[[NSScreen mainScreen] deviceDescription] objectForKey: @"NSScreenNumber"] intValue]] * 1024 * 1024;
             if( 0.9 * memory < dst8.rowBytes * dst8.height)
             {
-                [[AppController sharedAppController] growlTitle: NSLocalizedString( @"Warning!", nil) description: NSLocalizedString( @"3D Dataset volume is larger than the amount of graphic board VRAM: GPU Rendering could be slower than CPU Rendering.", nil)  name: @"result"];
+                [[AppController sharedAppController] notificationTitle: NSLocalizedString( @"Warning!", nil) description: NSLocalizedString( @"3D Dataset volume is larger than the amount of graphic board VRAM: GPU Rendering could be slower than CPU Rendering.", nil)  name: @"result"];
                 
                 if( [[NSUserDefaults standardUserDefaults] boolForKey: @"hideVRAMAlert"] == NO)
                 {
@@ -6752,9 +6756,10 @@ public:
         textWLWW->SetTextScaleModeToNone();												//vtkviewPort
         textWLWW->GetPositionCoordinate()->SetCoordinateSystemToDisplay();
         int *wsize = [self renderWindow]->GetSize();
-        textWLWW->GetPositionCoordinate()->SetValue( 2., wsize[ 1]-15);
+        textWLWW->GetPositionCoordinate()->SetValue(2., wsize[1] - 2.);
         textWLWW->GetTextProperty()->SetShadow(true);
         textWLWW->GetTextProperty()->SetShadowOffset(1, 1);
+        textWLWW->GetTextProperty()->SetVerticalJustificationToTop();
         
         aRenderer->AddActor2D(textWLWW);
         
@@ -8767,7 +8772,7 @@ static NSString * const O2PasteboardTypeEventModifierFlags = @"com.opensource.os
         [pbi setString:(id)kUTTypeImage forType:(id)kPasteboardTypeFilePromiseContent];
 
         NSDraggingItem* di = [[[NSDraggingItem alloc] initWithPasteboardWriter:pbi] autorelease];
-        NSPoint p = [self convertPoint:event.locationInWindow fromView:nil];
+        NSPoint p = [self convertPointToBacking:event.locationInWindow];
         [di setDraggingFrame:NSMakeRect(p.x-thumbnail.size.width/2, p.y-thumbnail.size.height/2, thumbnail.size.width, thumbnail.size.height) contents:thumbnail];
         
         NSDraggingSession* session = [self beginDraggingSessionWithItems:@[di] event:event source:self];
